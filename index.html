@@ -15,7 +15,7 @@ canvas { display: block; width: 100vw; height: 100vh; }
   background: radial-gradient(ellipse at 50% 30%, #16213e 0%, #0a0a1a 70%);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   transition: opacity 1s ease-out;
-  overflow: hidden;
+  overflow-y: auto;
 }
 #title-screen.hidden { opacity: 0; pointer-events: none; }
 
@@ -32,7 +32,7 @@ canvas { display: block; width: 100vw; height: 100vh; }
   100% { transform: translateY(-10vh) scale(1); opacity: 0; }
 }
 
-.title-content { position: relative; z-index: 2; text-align: center; max-width: 600px; width: 90vw; }
+.title-content { position: relative; z-index: 2; text-align: center; max-width: 600px; width: 90vw; padding: 2rem 0; }
 
 /* Dove icon */
 .dove { font-size: clamp(2.5rem, 6vw, 4rem); margin-bottom: 0.5rem; animation: dove-float 3s ease-in-out infinite; }
