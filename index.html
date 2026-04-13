@@ -1,0 +1,1871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0">
+<title>PIPELINE — Humanitarian Aid Game</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #1a1a2e; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; touch-action: none; user-select: none; -webkit-user-select: none; }
+canvas { display: block; width: 100vw; height: 100vh; }
+
+/* Loading Screen */
+#loading { position: fixed; inset: 0; background: #1a1a2e; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 1000; transition: opacity 0.8s; }
+#loading.hidden { opacity: 0; pointer-events: none; }
+#loading h1 { font-size: clamp(2rem, 6vw, 4rem); color: #e0e0e0; letter-spacing: 0.3em; margin-bottom: 0.5rem; }
+#loading .subtitle { color: #7fdbca; font-size: clamp(0.8rem, 2vw, 1.2rem); letter-spacing: 0.15em; margin-bottom: 2rem; }
+#loading .bar-outer { width: min(300px, 60vw); height: 4px; background: #333; border-radius: 2px; }
+#loading .bar-inner { height: 100%; width: 0%; background: linear-gradient(90deg, #7fdbca, #c3e88d); border-radius: 2px; transition: width 0.3s; }
+
+/* Username Modal */
+#username-modal { position: fixed; inset: 0; background: rgba(10,10,20,0.92); display: none; align-items: center; justify-content: center; z-index: 900; }
+#username-modal.active { display: flex; }
+#username-box { background: #16213e; border: 1px solid #7fdbca44; border-radius: 16px; padding: 2.5rem; text-align: center; max-width: 380px; width: 90vw; }
+#username-box h2 { color: #e0e0e0; font-size: 1.4rem; margin-bottom: 0.4rem; }
+#username-box p { color: #7fdbca; font-size: 0.85rem; margin-bottom: 1.5rem; }
+#username-input { width: 100%; padding: 0.8rem 1rem; font-size: 1.1rem; border: 1px solid #7fdbca55; border-radius: 10px; background: #0f3460; color: #e0e0e0; outline: none; text-align: center; letter-spacing: 0.1em; }
+#username-input:focus { border-color: #7fdbca; }
+#start-btn { margin-top: 1.2rem; padding: 0.8rem 2.5rem; font-size: 1rem; background: linear-gradient(135deg, #7fdbca, #53a88b); color: #1a1a2e; font-weight: 700; border: none; border-radius: 10px; cursor: pointer; letter-spacing: 0.1em; transition: transform 0.15s, box-shadow 0.15s; }
+#start-btn:hover { transform: scale(1.04); box-shadow: 0 4px 20px #7fdbca44; }
+
+/* HUD */
+#hud { position: fixed; top: 0; left: 0; right: 0; pointer-events: none; z-index: 100; padding: 1rem; display: none; }
+#hud.active { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.hud-item { background: rgba(15,15,30,0.75); backdrop-filter: blur(8px); border: 1px solid rgba(127,219,202,0.15); border-radius: 10px; padding: 0.45rem 0.9rem; color: #e0e0e0; font-size: clamp(0.7rem, 1.5vw, 0.85rem); display: flex; align-items: center; gap: 0.4rem; }
+.hud-item .icon { font-size: 1.1em; }
+.hud-item .val { color: #7fdbca; font-weight: 600; }
+
+/* Morale Bar */
+#morale-bar-wrap { position: fixed; bottom: 5.5rem; left: 50%; transform: translateX(-50%); width: min(240px, 50vw); z-index: 100; display: none; }
+#morale-bar-wrap.active { display: block; }
+#morale-label { color: #e0e0e0; font-size: 0.7rem; text-align: center; margin-bottom: 3px; letter-spacing: 0.1em; }
+#morale-bar-outer { width: 100%; height: 8px; background: rgba(30,30,50,0.8); border-radius: 4px; border: 1px solid rgba(127,219,202,0.2); }
+#morale-bar-inner { height: 100%; width: 100%; background: linear-gradient(90deg, #ff6b6b, #ffd93d, #7fdbca); border-radius: 3px; transition: width 0.3s; }
+
+/* Supply indicator */
+#supply-indicator { position: fixed; bottom: 4rem; left: 50%; transform: translateX(-50%); display: none; z-index: 100; }
+#supply-indicator.active { display: flex; gap: 6px; align-items: center; }
+.supply-dot { width: 18px; height: 18px; border-radius: 4px; border: 2px solid rgba(127,219,202,0.4); background: rgba(30,30,50,0.6); transition: all 0.3s; }
+.supply-dot.filled { background: #7fdbca; border-color: #7fdbca; box-shadow: 0 0 8px #7fdbca88; }
+
+/* Negotiation overlay */
+#negotiation { position: fixed; inset: 0; background: rgba(5,5,15,0.88); display: none; align-items: center; justify-content: center; z-index: 500; }
+#negotiation.active { display: flex; }
+#negotiation-box { text-align: center; max-width: 600px; width: 90vw; }
+#negotiation-box h2 { color: #ffd93d; font-size: clamp(1.3rem, 3vw, 2rem); margin-bottom: 1rem; letter-spacing: 0.1em; }
+#negotiation-box p { color: #ccc; font-size: clamp(0.85rem, 2vw, 1rem); margin-bottom: 2rem; line-height: 1.6; }
+.neg-choices { display: flex; flex-direction: column; gap: 0.8rem; }
+.neg-choice { padding: 1rem 1.5rem; background: #16213e; border: 1px solid #7fdbca33; border-radius: 12px; color: #e0e0e0; font-size: clamp(0.85rem, 2vw, 1rem); cursor: pointer; pointer-events: auto; transition: all 0.2s; text-align: left; }
+.neg-choice:hover { border-color: #7fdbca; background: #1a2744; transform: translateX(4px); }
+.neg-choice.correct { border-color: #7fdbca; }
+.neg-choice.wrong { border-color: #ff6b6b; }
+#neg-timer { color: #ffd93d; font-size: 1.5rem; margin-bottom: 1rem; }
+
+/* Level Complete */
+#level-complete { position: fixed; inset: 0; background: rgba(5,5,15,0.9); display: none; align-items: center; justify-content: center; z-index: 600; }
+#level-complete.active { display: flex; }
+#level-complete-box { text-align: center; max-width: 450px; width: 90vw; background: #16213e; border: 1px solid #7fdbca33; border-radius: 20px; padding: 2.5rem; }
+#level-complete-box h2 { color: #c3e88d; font-size: 2rem; margin-bottom: 0.3rem; }
+#level-complete-box .peace-msg { color: #7fdbca; font-size: 1rem; margin-bottom: 1.5rem; }
+.stat-row { display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #ffffff11; color: #ccc; font-size: 0.9rem; }
+.stat-row .stat-val { color: #7fdbca; font-weight: 600; }
+#next-level-btn, #portal-btn { margin-top: 1.2rem; padding: 0.8rem 2rem; font-size: 1rem; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; margin-right: 0.5rem; pointer-events: auto; }
+#next-level-btn { background: linear-gradient(135deg, #7fdbca, #53a88b); color: #1a1a2e; }
+#portal-btn { background: linear-gradient(135deg, #a855f7, #6366f1); color: white; }
+
+/* Minimap */
+#minimap { position: fixed; bottom: 1rem; right: 1rem; width: min(140px, 20vw); height: min(140px, 20vw); border-radius: 12px; border: 1px solid rgba(127,219,202,0.2); background: rgba(15,15,30,0.8); z-index: 100; display: none; overflow: hidden; }
+#minimap.active { display: block; }
+#minimap canvas { width: 100%; height: 100%; }
+
+/* Mute button */
+#mute-btn { position: fixed; top: 1rem; right: 1rem; width: 40px; height: 40px; border-radius: 50%; background: rgba(15,15,30,0.75); border: 1px solid rgba(127,219,202,0.2); color: #e0e0e0; font-size: 1.2rem; cursor: pointer; z-index: 200; display: none; pointer-events: auto; display: flex; align-items: center; justify-content: center; }
+#mute-btn.active { display: flex; }
+
+/* Emote bar */
+#emote-bar { position: fixed; bottom: 1rem; left: 50%; transform: translateX(-50%); display: none; gap: 8px; z-index: 100; pointer-events: auto; }
+#emote-bar.active { display: flex; }
+.emote-btn { width: 44px; height: 44px; border-radius: 50%; background: rgba(15,15,30,0.75); border: 1px solid rgba(127,219,202,0.2); font-size: 1.3rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.15s; }
+.emote-btn:hover, .emote-btn:active { transform: scale(1.15); border-color: #7fdbca; }
+
+/* Mobile joystick */
+#joystick-zone { position: fixed; bottom: 0; left: 0; width: 45vw; height: 40vh; z-index: 150; display: none; }
+#joystick-zone.active { display: block; }
+#action-btn { position: fixed; bottom: 4.5rem; right: 1.5rem; width: 64px; height: 64px; border-radius: 50%; background: rgba(127,219,202,0.25); border: 2px solid #7fdbca88; color: #7fdbca; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.05em; z-index: 150; display: none; cursor: pointer; align-items: center; justify-content: center; }
+#action-btn.active { display: flex; }
+
+/* Message popup */
+#message { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); color: #ffd93d; font-size: clamp(1.2rem, 3vw, 1.8rem); font-weight: 700; letter-spacing: 0.1em; text-shadow: 0 2px 10px rgba(0,0,0,0.5); z-index: 300; opacity: 0; transition: opacity 0.4s, transform 0.4s; pointer-events: none; text-align: center; }
+#message.show { opacity: 1; transform: translate(-50%, -60%); }
+
+/* Objective text */
+#objective { position: fixed; top: 4.5rem; left: 50%; transform: translateX(-50%); color: rgba(200,200,200,0.7); font-size: clamp(0.7rem, 1.5vw, 0.85rem); z-index: 100; display: none; text-align: center; letter-spacing: 0.05em; pointer-events: none; }
+#objective.active { display: block; }
+</style>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div id="loading">
+  <h1>PIPELINE</h1>
+  <div class="subtitle">HUMANITARIAN AID GAME</div>
+  <div class="bar-outer"><div class="bar-inner" id="load-bar"></div></div>
+</div>
+
+<!-- Username Modal -->
+<div id="username-modal">
+  <div id="username-box">
+    <h2>🕊️ PIPELINE</h2>
+    <p>Enter the field. Build peace.</p>
+    <input id="username-input" type="text" maxlength="12" placeholder="Your callsign..." autocomplete="off">
+    <br>
+    <button id="start-btn">DEPLOY →</button>
+  </div>
+</div>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="hud-item"><span class="icon">📦</span> Supplies: <span class="val" id="hud-supplies">0</span>/10</div>
+  <div class="hud-item"><span class="icon">👥</span> Rescued: <span class="val" id="hud-rescued">0</span>/10</div>
+  <div class="hud-item"><span class="icon">⭐</span> Score: <span class="val" id="hud-score">0</span></div>
+  <div class="hud-item"><span class="icon">🏙️</span> <span class="val" id="hud-level">Small Town</span></div>
+</div>
+<div id="morale-bar-wrap"><div id="morale-label">MORALE</div><div id="morale-bar-outer"><div id="morale-bar-inner"></div></div></div>
+<div id="supply-indicator"><div class="supply-dot"></div><div class="supply-dot"></div><div class="supply-dot"></div></div>
+<div id="objective">Deliver supplies and rescue civilians to bring peace</div>
+
+<!-- Negotiation -->
+<div id="negotiation">
+  <div id="negotiation-box">
+    <div id="neg-timer">5</div>
+    <h2 id="neg-title">Peace Negotiation</h2>
+    <p id="neg-prompt">Choose wisely...</p>
+    <div class="neg-choices" id="neg-choices"></div>
+  </div>
+</div>
+
+<!-- Level Complete -->
+<div id="level-complete">
+  <div id="level-complete-box">
+    <h2>🕊️ PEACE ACHIEVED</h2>
+    <div class="peace-msg" id="peace-city-name">Small Town Liberated</div>
+    <div id="stats-list"></div>
+    <div style="margin-top:1.5rem">
+      <button id="next-level-btn">Next City →</button>
+      <button id="portal-btn">🌀 Vibeverse Portal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Minimap -->
+<div id="minimap"><canvas id="minimap-canvas"></canvas></div>
+
+<!-- Mute -->
+<button id="mute-btn">🔊</button>
+
+<!-- Emotes -->
+<div id="emote-bar">
+  <button class="emote-btn" data-emote="wave">👋</button>
+  <button class="emote-btn" data-emote="target">🎯</button>
+  <button class="emote-btn" data-emote="warn">⚠️</button>
+  <button class="emote-btn" data-emote="ok">✅</button>
+</div>
+
+<!-- Mobile Controls -->
+<div id="joystick-zone"></div>
+<button id="action-btn">ACT</button>
+
+<!-- Message popup -->
+<div id="message"></div>
+
+<!-- Three.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+// ============================================================
+// PIPELINE — Core Game Engine
+// ============================================================
+'use strict';
+
+// --- Constants ---
+const MAP_SIZE = 80;
+const BUILDING_COUNT = 60;
+const TREE_COUNT = 40;
+const SUPPLY_COUNT = 8;
+const CIVILIAN_COUNT = 12;
+const DANGER_ZONE_COUNT = 5;
+const MAX_CARRY = 3;
+const MORALE_MAX = 100;
+const SUPPLIES_NEEDED = 10;
+const RESCUES_NEEDED = 10;
+const PI = Math.PI;
+const TWO_PI = PI * 2;
+const isMobile = ('ontouchstart' in window) || navigator.maxTouchPoints > 0 || window.innerWidth < 768;
+
+// --- Game State ---
+const state = {
+  phase: 'loading', // loading, menu, playing, negotiation, levelComplete
+  username: '',
+  level: 0,
+  score: 0,
+  suppliesDelivered: 0,
+  civiliansRescued: 0,
+  morale: MORALE_MAX,
+  carrying: 0,
+  followers: [],
+  negotiationCorrect: 0,
+  peaceAchieved: false,
+  peaceProgress: 0, // 0-1 for color wash
+  peaceCenter: null,
+  gameClock: 0,
+  muted: localStorage.getItem('pipeline-muted') === 'true',
+  dayTime: 0.3, // 0-1 day cycle
+};
+
+const levels = [
+  { name: 'Small Town', size: 60, buildings: 40, trees: 30, supplies: 8, civilians: 12, dangers: 3, color: '#7fdbca' },
+  { name: 'Port City', size: 80, buildings: 60, trees: 25, supplies: 10, civilians: 15, dangers: 5, color: '#82aaff' },
+  { name: 'The Capital', size: 100, buildings: 80, trees: 20, supplies: 12, civilians: 18, dangers: 7, color: '#ffd93d' },
+];
+
+const keys = {};
+let playerMesh, playerLight;
+let buildings = [], trees = [], supplies = [], civilians = [], dangerZones = [], safeZones = [];
+let negotiationMarker = null;
+let portalMesh = null;
+let particles = { dust: null, confetti: [], healing: [], sparkle: null };
+let scene, camera, renderer, clock;
+let minimapCtx;
+let joystickData = { active: false, startX: 0, startY: 0, dx: 0, dy: 0 };
+let playerVel = { x: 0, z: 0 };
+let cameraTarget = new THREE.Vector3();
+let msgTimeout;
+
+// --- Negotiation data ---
+const negotiations = [
+  [
+    { prompt: "The local militia demands you leave. How do you respond?",
+      choices: [
+        { text: "🕊️ 'We're here to help everyone, including your families. Let us deliver medicine.'", correct: true },
+        { text: "⚔️ 'We won't be intimidated. Stand down or face consequences.'", correct: false },
+        { text: "🏃 'Fine, we'll leave this sector immediately.'", correct: false }
+      ]},
+    { prompt: "A faction leader offers to protect your convoy — for a price.",
+      choices: [
+        { text: "💰 Accept the deal and pay for protection.", correct: false },
+        { text: "🤝 'Instead of payment, let us set up a medical clinic for your people too.'", correct: true },
+        { text: "🚫 Refuse and try to sneak through another route.", correct: false }
+      ]},
+    { prompt: "Both sides are at the table. What's your opening move?",
+      choices: [
+        { text: "📋 Present evidence of civilian suffering to both sides.", correct: true },
+        { text: "💪 Threaten international sanctions if they don't comply.", correct: false },
+        { text: "🎁 Offer weapons buyback program immediately.", correct: false }
+      ]}
+  ],
+  [
+    { prompt: "The port authority has blocked humanitarian ships. Your response?",
+      choices: [
+        { text: "🕊️ 'These ships carry only food and medicine. Inspect them yourselves.'", correct: true },
+        { text: "⚔️ Force the blockade with international escorts.", correct: false },
+        { text: "🏃 Reroute all supplies through dangerous overland routes.", correct: false }
+      ]},
+    { prompt: "A ceasefire is proposed but one faction wants territorial concessions.",
+      choices: [
+        { text: "🤝 'Let's start with a 48-hour humanitarian pause — no conditions.'", correct: true },
+        { text: "💰 Offer economic incentives for the territorial concession.", correct: false },
+        { text: "📋 Insist on full withdrawal before any talks.", correct: false }
+      ]},
+    { prompt: "Final round: How do you secure lasting peace?",
+      choices: [
+        { text: "🏗️ 'Together, rebuild infrastructure that serves both communities.'", correct: true },
+        { text: "👮 Demand international peacekeeping forces permanently.", correct: false },
+        { text: "📝 Push for a quick signed agreement before anyone changes their mind.", correct: false }
+      ]}
+  ],
+  [
+    { prompt: "Multiple factions are fighting in the capital. Your first move?",
+      choices: [
+        { text: "🕊️ Establish neutral safe corridors that all sides agree to respect.", correct: true },
+        { text: "⚔️ Ally with the strongest faction to end it quickly.", correct: false },
+        { text: "🏃 Evacuate and wait for the fighting to stop.", correct: false }
+      ]},
+    { prompt: "A misinformation campaign is turning civilians against aid workers.",
+      choices: [
+        { text: "📻 Set up a community radio station run by local journalists.", correct: true },
+        { text: "📋 Issue official statements denying the claims.", correct: false },
+        { text: "🚫 Ignore it and keep working.", correct: false }
+      ]},
+    { prompt: "The final peace summit. What seals the deal?",
+      choices: [
+        { text: "🤝 'Let the children from both sides present their hopes for the future.'", correct: true },
+        { text: "💰 Massive international aid package conditional on peace.", correct: false },
+        { text: "📝 A lengthy legal framework drafted by international lawyers.", correct: false }
+      ]}
+  ]
+];
+
+// --- Helpers ---
+function lerp(a, b, t) { return a + (b - a) * t; }
+function clamp(v, mn, mx) { return Math.max(mn, Math.min(mx, v)); }
+function rand(a, b) { return a + Math.random() * (b - a); }
+function randInt(a, b) { return Math.floor(rand(a, b)); }
+function dist2D(a, b) { return Math.sqrt((a.x - b.x) ** 2 + (a.z - b.z) ** 2); }
+function showMessage(text, duration = 2000) {
+  const el = document.getElementById('message');
+  el.textContent = text;
+  el.classList.add('show');
+  clearTimeout(msgTimeout);
+  msgTimeout = setTimeout(() => el.classList.remove('show'), duration);
+}
+
+// ============================================================
+// THREE.JS SCENE SETUP
+// ============================================================
+function initScene() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x1a1a2e);
+  scene.fog = new THREE.FogExp2(0x1a1a2e, 0.018);
+
+  camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 200);
+  camera.position.set(0, 25, 25);
+  camera.lookAt(0, 0, 0);
+
+  renderer = new THREE.WebGLRenderer({ antialias: !isMobile, powerPreference: 'high-performance' });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
+  renderer.shadowMap.enabled = !isMobile;
+  if (renderer.shadowMap.enabled) renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 0.9;
+  document.body.insertBefore(renderer.domElement, document.body.firstChild);
+
+  clock = new THREE.Clock();
+
+  // Lights
+  const ambient = new THREE.AmbientLight(0x404060, 0.6);
+  scene.add(ambient);
+
+  const sun = new THREE.DirectionalLight(0xffeedd, 1.2);
+  sun.position.set(30, 50, 20);
+  sun.castShadow = !isMobile;
+  if (sun.castShadow) {
+    sun.shadow.mapSize.width = isMobile ? 512 : 1024;
+    sun.shadow.mapSize.height = isMobile ? 512 : 1024;
+    sun.shadow.camera.near = 0.5;
+    sun.shadow.camera.far = 120;
+    sun.shadow.camera.left = -50;
+    sun.shadow.camera.right = 50;
+    sun.shadow.camera.top = 50;
+    sun.shadow.camera.bottom = -50;
+  }
+  scene.add(sun);
+  scene.userData.sun = sun;
+
+  const hemi = new THREE.HemisphereLight(0x87ceeb, 0x362d28, 0.4);
+  scene.add(hemi);
+
+  // Minimap
+  const mc = document.getElementById('minimap-canvas');
+  mc.width = 140; mc.height = 140;
+  minimapCtx = mc.getContext('2d');
+
+  window.addEventListener('resize', onResize);
+}
+
+function onResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+// ============================================================
+// PROCEDURAL CITY GENERATION
+// ============================================================
+function generateCity() {
+  // Clear old objects
+  buildings.forEach(b => scene.remove(b.mesh));
+  trees.forEach(t => scene.remove(t));
+  supplies.forEach(s => scene.remove(s.mesh));
+  civilians.forEach(c => { scene.remove(c.mesh); if(c.label) scene.remove(c.label); });
+  dangerZones.forEach(d => scene.remove(d.mesh));
+  safeZones.forEach(s => scene.remove(s.mesh));
+  if (negotiationMarker) { scene.remove(negotiationMarker); negotiationMarker = null; }
+  if (portalMesh) { scene.remove(portalMesh); portalMesh = null; }
+  buildings = []; trees = []; supplies = []; civilians = []; dangerZones = []; safeZones = [];
+
+  const lvl = levels[state.level];
+  const half = lvl.size / 2;
+
+  // Ground
+  if (!scene.userData.ground) {
+    const groundGeo = new THREE.PlaneGeometry(200, 200);
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x2d3436, roughness: 0.9 });
+    const ground = new THREE.Mesh(groundGeo, groundMat);
+    ground.rotation.x = -PI / 2;
+    ground.receiveShadow = true;
+    scene.add(ground);
+    scene.userData.ground = ground;
+  }
+
+  // Roads (grid pattern)
+  const roadMat = new THREE.MeshStandardMaterial({ color: 0x2c3e50, roughness: 0.95 });
+  for (let i = -half; i <= half; i += 10) {
+    const roadH = new THREE.Mesh(new THREE.PlaneGeometry(lvl.size, 3), roadMat);
+    roadH.rotation.x = -PI / 2; roadH.position.set(0, 0.01, i);
+    scene.add(roadH);
+    const roadV = new THREE.Mesh(new THREE.PlaneGeometry(3, lvl.size), roadMat);
+    roadV.rotation.x = -PI / 2; roadV.position.set(i, 0.01, 0);
+    scene.add(roadV);
+  }
+
+  // Buildings
+  const buildingColors = [0x636e72, 0x6c5ce7, 0x74b9ff, 0x55efc4, 0xffeaa7, 0xfab1a0, 0xdfe6e9];
+  const warColor = new THREE.Color(0x636e72);
+
+  for (let i = 0; i < lvl.buildings; i++) {
+    let x, z;
+    // Place buildings in grid blocks (not on roads)
+    do {
+      x = rand(-half + 2, half - 2);
+      z = rand(-half + 2, half - 2);
+    } while (Math.abs(x % 10) < 2 || Math.abs(z % 10) < 2); // avoid roads
+
+    const w = rand(2, 5);
+    const h = rand(2, 12);
+    const d = rand(2, 5);
+    const peaceColor = new THREE.Color(buildingColors[i % buildingColors.length]);
+
+    const geo = new THREE.BoxGeometry(w, h, d);
+    const mat = new THREE.MeshStandardMaterial({ color: warColor.clone(), roughness: 0.8, metalness: 0.1 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, h / 2, z);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+
+    // Roof detail
+    if (Math.random() > 0.5) {
+      const roofGeo = new THREE.ConeGeometry(Math.min(w, d) * 0.5, 1.5, 4);
+      const roofMat = new THREE.MeshStandardMaterial({ color: 0x4a4a5a, roughness: 0.7 });
+      const roof = new THREE.Mesh(roofGeo, roofMat);
+      roof.position.set(x, h + 0.75, z);
+      roof.rotation.y = PI / 4;
+      scene.add(roof);
+    }
+
+    buildings.push({ mesh, x, z, w, h, d, peaceColor, restored: false, mat });
+  }
+
+  // Trees
+  for (let i = 0; i < lvl.trees; i++) {
+    let x, z;
+    do {
+      x = rand(-half + 1, half - 1);
+      z = rand(-half + 1, half - 1);
+    } while (Math.abs(x % 10) < 2 || Math.abs(z % 10) < 2);
+
+    const group = new THREE.Group();
+    const trunk = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.15, 0.2, 1.5, 6),
+      new THREE.MeshStandardMaterial({ color: 0x6d4c41 })
+    );
+    trunk.position.y = 0.75;
+    group.add(trunk);
+
+    const foliage = new THREE.Mesh(
+      new THREE.ConeGeometry(1.2, 2.5, 6),
+      new THREE.MeshStandardMaterial({ color: 0x445544, roughness: 0.9 })
+    );
+    foliage.position.y = 2.5;
+    group.add(foliage);
+
+    group.position.set(x, 0, z);
+    scene.add(group);
+    trees.push(group);
+  }
+
+  // Safe Zones (4 corners + center-ish)
+  const safePositions = [
+    { x: -half + 8, z: -half + 8 },
+    { x: half - 8, z: -half + 8 },
+    { x: -half + 8, z: half - 8 },
+    { x: half - 8, z: half - 8 },
+    { x: 0, z: 0 }
+  ];
+  safePositions.forEach(pos => {
+    const geo = new THREE.CylinderGeometry(4, 4, 0.1, 32);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x00b894, transparent: true, opacity: 0.3, emissive: 0x00b894, emissiveIntensity: 0.3 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(pos.x, 0.05, pos.z);
+    scene.add(mesh);
+
+    // Safe zone pillar/marker
+    const pillar = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.3, 0.3, 3, 8),
+      new THREE.MeshStandardMaterial({ color: 0x00b894, emissive: 0x00b894, emissiveIntensity: 0.5 })
+    );
+    pillar.position.set(pos.x, 1.5, pos.z);
+    scene.add(pillar);
+
+    // Cross symbol on top
+    const cross1 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.2, 0.3), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.3 }));
+    cross1.position.set(pos.x, 3.2, pos.z);
+    scene.add(cross1);
+    const cross2 = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.2, 1.2), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.3 }));
+    cross2.position.set(pos.x, 3.2, pos.z);
+    scene.add(cross2);
+
+    safeZones.push({ mesh, x: pos.x, z: pos.z, radius: 4 });
+  });
+
+  // Supply Crates
+  spawnSupplies();
+
+  // Civilians
+  spawnCivilians();
+
+  // Danger Zones
+  for (let i = 0; i < lvl.dangers; i++) {
+    const x = rand(-half + 10, half - 10);
+    const z = rand(-half + 10, half - 10);
+    const r = rand(5, 10);
+    const geo = new THREE.CylinderGeometry(r, r, 0.1, 32);
+    const mat = new THREE.MeshStandardMaterial({ color: 0xff6b6b, transparent: true, opacity: 0.15, emissive: 0xff6b6b, emissiveIntensity: 0.2 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, 0.06, z);
+    scene.add(mesh);
+    dangerZones.push({ mesh, x, z, radius: r });
+  }
+
+  // Player
+  if (!playerMesh) {
+    const playerGroup = new THREE.Group();
+
+    // Body
+    const body = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.35, 0.4, 1.2, 8),
+      new THREE.MeshStandardMaterial({ color: 0x0984e3, roughness: 0.6 })
+    );
+    body.position.y = 0.9;
+    playerGroup.add(body);
+
+    // Head
+    const head = new THREE.Mesh(
+      new THREE.SphereGeometry(0.3, 8, 6),
+      new THREE.MeshStandardMaterial({ color: 0xffeaa7, roughness: 0.7 })
+    );
+    head.position.y = 1.8;
+    playerGroup.add(head);
+
+    // Hat (humanitarian worker beret)
+    const hat = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.35, 0.32, 0.15, 8),
+      new THREE.MeshStandardMaterial({ color: 0x00b894, roughness: 0.5 })
+    );
+    hat.position.y = 2.05;
+    playerGroup.add(hat);
+
+    // Vest indicator
+    const vest = new THREE.Mesh(
+      new THREE.BoxGeometry(0.5, 0.4, 0.5),
+      new THREE.MeshStandardMaterial({ color: 0xff7675, emissive: 0xff7675, emissiveIntensity: 0.2 })
+    );
+    vest.position.y = 1.15;
+    playerGroup.add(vest);
+
+    playerGroup.castShadow = true;
+    playerGroup.position.set(0, 0, 0);
+    scene.add(playerGroup);
+    playerMesh = playerGroup;
+
+    // Player point light
+    playerLight = new THREE.PointLight(0x7fdbca, 0.5, 8);
+    playerLight.position.y = 2;
+    playerGroup.add(playerLight);
+  } else {
+    playerMesh.position.set(0, 0, 0);
+  }
+
+  // Skybox: procedural gradient
+  updateSky();
+
+  // Dust particles
+  createDustParticles();
+}
+
+function spawnSupplies() {
+  const lvl = levels[state.level];
+  const half = lvl.size / 2;
+  for (let i = 0; i < lvl.supplies; i++) {
+    const x = rand(-half + 5, half - 5);
+    const z = rand(-half + 5, half - 5);
+    const geo = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+    const mat = new THREE.MeshStandardMaterial({ color: 0xffd93d, emissive: 0xffd93d, emissiveIntensity: 0.4, roughness: 0.5 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, 0.6, z);
+    mesh.rotation.y = rand(0, PI);
+    mesh.castShadow = true;
+    scene.add(mesh);
+    supplies.push({ mesh, x, z, collected: false, bobPhase: rand(0, TWO_PI) });
+  }
+}
+
+function spawnCivilians() {
+  const lvl = levels[state.level];
+  const half = lvl.size / 2;
+  for (let i = 0; i < lvl.civilians; i++) {
+    const x = rand(-half + 5, half - 5);
+    const z = rand(-half + 5, half - 5);
+
+    const group = new THREE.Group();
+    // Simple person shape
+    const civBody = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.2, 0.25, 0.8, 6),
+      new THREE.MeshStandardMaterial({ color: 0xdfe6e9, roughness: 0.7 })
+    );
+    civBody.position.y = 0.6;
+    group.add(civBody);
+
+    const civHead = new THREE.Mesh(
+      new THREE.SphereGeometry(0.2, 6, 5),
+      new THREE.MeshStandardMaterial({ color: 0xffeaa7, roughness: 0.7 })
+    );
+    civHead.position.y = 1.15;
+    group.add(civHead);
+
+    // Hands
+    const handGeo = new THREE.SphereGeometry(0.08, 4, 4);
+    const handMat = new THREE.MeshStandardMaterial({ color: 0xffeaa7 });
+    const leftHand = new THREE.Mesh(handGeo, handMat);
+    leftHand.position.set(-0.35, 0.7, 0);
+    group.add(leftHand);
+    const rightHand = new THREE.Mesh(handGeo, handMat);
+    rightHand.position.set(0.35, 0.7, 0);
+    group.add(rightHand);
+
+    group.position.set(x, 0, z);
+    scene.add(group);
+
+    civilians.push({
+      mesh: group,
+      x, z,
+      rescued: false,
+      following: false,
+      wanderAngle: rand(0, TWO_PI),
+      wanderTimer: rand(0, 3),
+      originalX: x,
+      originalZ: z,
+      hands: { left: leftHand, right: rightHand }
+    });
+  }
+}
+
+function createDustParticles() {
+  if (particles.dust) scene.remove(particles.dust);
+  const count = isMobile ? 200 : 500;
+  const geo = new THREE.BufferGeometry();
+  const positions = new Float32Array(count * 3);
+  const lvl = levels[state.level];
+  const half = lvl.size / 2;
+  for (let i = 0; i < count; i++) {
+    positions[i * 3] = rand(-half, half);
+    positions[i * 3 + 1] = rand(0.5, 8);
+    positions[i * 3 + 2] = rand(-half, half);
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({ color: 0x888888, size: 0.08, transparent: true, opacity: 0.4 });
+  particles.dust = new THREE.Points(geo, mat);
+  scene.add(particles.dust);
+}
+
+function updateSky() {
+  // Procedural sky gradient via background
+  const peaceT = state.peaceProgress;
+  const warSky = new THREE.Color(0x1a1a2e);
+  const peaceSky = new THREE.Color(0x74b9ff);
+  scene.background = warSky.clone().lerp(peaceSky, peaceT * 0.7);
+  scene.fog.color.copy(scene.background);
+  scene.fog.density = lerp(0.018, 0.008, peaceT);
+}
+// ============================================================
+// AUDIO ENGINE — Procedural Web Audio API
+// ============================================================
+const AudioEngine = {
+  ctx: null,
+  masterGain: null,
+  layers: {},
+  initialized: false,
+
+  init() {
+    if (this.initialized) return;
+    try {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      this.masterGain = this.ctx.createGain();
+      this.masterGain.gain.value = state.muted ? 0 : 0.5;
+      this.masterGain.connect(this.ctx.destination);
+
+      // Bass drone layer (always on)
+      this.layers.bass = this.createDrone(55, 'sine', 0.12);
+      // Tension layer
+      this.layers.tension = this.createDrone(110, 'sawtooth', 0);
+      // Hope layer
+      this.layers.hope = this.createOscillator(440, 'sine', 0);
+
+      this.initialized = true;
+    } catch(e) { console.log('Audio init failed:', e); }
+  },
+
+  createDrone(freq, type, vol) {
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 200;
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.value = vol;
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start();
+    return { osc, gain, filter };
+  },
+
+  createOscillator(freq, type, vol) {
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.value = vol;
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start();
+    return { osc, gain };
+  },
+
+  updateLayers(inDanger, nearSafe, peaceLevel) {
+    if (!this.initialized) return;
+    const t = this.ctx.currentTime;
+
+    // Tension rises in danger
+    this.layers.tension.gain.gain.linearRampToValueAtTime(inDanger ? 0.08 : 0, t + 0.5);
+    this.layers.tension.filter.frequency.linearRampToValueAtTime(inDanger ? 600 : 200, t + 0.5);
+
+    // Hope near safe zones
+    this.layers.hope.gain.gain.linearRampToValueAtTime(nearSafe ? 0.04 : 0, t + 0.5);
+    const pentatonic = [261.63, 293.66, 329.63, 392.00, 440.00];
+    if (nearSafe && Math.random() < 0.02) {
+      this.layers.hope.osc.frequency.linearRampToValueAtTime(
+        pentatonic[Math.floor(Math.random() * pentatonic.length)], t + 0.3
+      );
+    }
+
+    // Peace affects bass
+    this.layers.bass.gain.gain.linearRampToValueAtTime(lerp(0.12, 0.06, peaceLevel), t + 1);
+  },
+
+  playPickup() {
+    if (!this.initialized || state.muted) return;
+    const t = this.ctx.currentTime;
+    const notes = [261.63, 329.63, 392.00, 523.25]; // C E G C
+    notes.forEach((freq, i) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.15, t + i * 0.08);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.08 + 0.3);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(t + i * 0.08);
+      osc.stop(t + i * 0.08 + 0.4);
+    });
+  },
+
+  playDelivery() {
+    if (!this.initialized || state.muted) return;
+    const t = this.ctx.currentTime;
+    [261.63, 329.63, 392.00].forEach((freq, i) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.2, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(t);
+      osc.stop(t + 1);
+    });
+    // Shimmer
+    const noise = this.ctx.createOscillator();
+    const nGain = this.ctx.createGain();
+    noise.type = 'sine';
+    noise.frequency.value = 1200;
+    nGain.gain.setValueAtTime(0.05, t);
+    nGain.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+    noise.connect(nGain);
+    nGain.connect(this.masterGain);
+    noise.start(t);
+    noise.stop(t + 1.5);
+  },
+
+  playRescue() {
+    if (!this.initialized || state.muted) return;
+    const t = this.ctx.currentTime;
+    const chime = [523.25, 659.25, 783.99, 1046.50];
+    chime.forEach((freq, i) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.12, t + i * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.12 + 0.5);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(t + i * 0.12);
+      osc.stop(t + i * 0.12 + 0.6);
+    });
+  },
+
+  playDanger() {
+    if (!this.initialized || state.muted) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.value = 60;
+    gain.gain.setValueAtTime(0.08, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 0.6);
+  },
+
+  playFootstep() {
+    if (!this.initialized || state.muted) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.value = rand(80, 120);
+    gain.gain.setValueAtTime(0.03, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 0.1);
+  },
+
+  playCeasefire() {
+    if (!this.initialized || state.muted) return;
+    const t = this.ctx.currentTime;
+    // Crescendo chord
+    const freqs = [261.63, 329.63, 392.00, 523.25, 659.25];
+    freqs.forEach((freq, i) => {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.15, t + 2);
+      gain.gain.linearRampToValueAtTime(0, t + 5);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(t + i * 0.3);
+      osc.stop(t + 6);
+    });
+    // Birds after silence
+    setTimeout(() => this.playBirds(), 5500);
+  },
+
+  playBirds() {
+    if (!this.initialized || state.muted) return;
+    const t = this.ctx.currentTime;
+    for (let i = 0; i < 5; i++) {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(rand(1800, 3000), t + i * 0.4);
+      osc.frequency.linearRampToValueAtTime(rand(1200, 2500), t + i * 0.4 + 0.15);
+      gain.gain.setValueAtTime(0.06, t + i * 0.4);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + i * 0.4 + 0.2);
+      osc.connect(gain);
+      gain.connect(this.masterGain);
+      osc.start(t + i * 0.4);
+      osc.stop(t + i * 0.4 + 0.3);
+    }
+  },
+
+  playNegSuccess() {
+    if (!this.initialized || state.muted) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 523.25;
+    gain.gain.setValueAtTime(0.15, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 0.6);
+  },
+
+  playNegFail() {
+    if (!this.initialized || state.muted) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.value = 150;
+    osc.frequency.linearRampToValueAtTime(80, t + 0.4);
+    gain.gain.setValueAtTime(0.1, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 0.6);
+  },
+
+  playUIClick() {
+    if (!this.initialized || state.muted) return;
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 800;
+    gain.gain.setValueAtTime(0.06, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(t);
+    osc.stop(t + 0.1);
+  },
+
+  toggleMute() {
+    state.muted = !state.muted;
+    localStorage.setItem('pipeline-muted', state.muted);
+    if (this.masterGain) {
+      this.masterGain.gain.value = state.muted ? 0 : 0.5;
+    }
+    document.getElementById('mute-btn').textContent = state.muted ? '🔇' : '🔊';
+  }
+};
+
+// ============================================================
+// PARTICLE EFFECTS
+// ============================================================
+function spawnConfetti(x, y, z, count = 30) {
+  const colors = [0x7fdbca, 0xffd93d, 0xff6b6b, 0xc3e88d, 0x82aaff];
+  for (let i = 0; i < count; i++) {
+    const geo = new THREE.BoxGeometry(0.15, 0.15, 0.02);
+    const mat = new THREE.MeshBasicMaterial({ color: colors[i % colors.length] });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, y, z);
+    scene.add(mesh);
+    particles.confetti.push({
+      mesh,
+      vx: rand(-0.1, 0.1),
+      vy: rand(0.1, 0.25),
+      vz: rand(-0.1, 0.1),
+      life: 2,
+      rotSpeed: rand(-5, 5)
+    });
+  }
+}
+
+function spawnHealingGlow(x, z) {
+  const count = 15;
+  for (let i = 0; i < count; i++) {
+    const geo = new THREE.SphereGeometry(0.1, 4, 4);
+    const mat = new THREE.MeshBasicMaterial({ color: 0x7fdbca, transparent: true, opacity: 0.7 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x + rand(-1, 1), rand(0.5, 2), z + rand(-1, 1));
+    scene.add(mesh);
+    particles.healing.push({
+      mesh, vy: rand(0.02, 0.05), life: 3
+    });
+  }
+}
+
+function updateParticles(dt) {
+  // Dust float
+  if (particles.dust) {
+    const pos = particles.dust.geometry.attributes.position.array;
+    for (let i = 0; i < pos.length; i += 3) {
+      pos[i + 1] += Math.sin(state.gameClock + pos[i]) * 0.002;
+      pos[i] += Math.sin(state.gameClock * 0.5 + pos[i + 2]) * 0.003;
+    }
+    particles.dust.geometry.attributes.position.needsUpdate = true;
+  }
+
+  // Confetti
+  for (let i = particles.confetti.length - 1; i >= 0; i--) {
+    const p = particles.confetti[i];
+    p.mesh.position.x += p.vx;
+    p.mesh.position.y += p.vy;
+    p.mesh.position.z += p.vz;
+    p.vy -= 0.008; // gravity
+    p.mesh.rotation.x += p.rotSpeed * dt;
+    p.mesh.rotation.z += p.rotSpeed * 0.7 * dt;
+    p.life -= dt;
+    p.mesh.material.opacity = Math.max(0, p.life / 2);
+    p.mesh.material.transparent = true;
+    if (p.life <= 0) {
+      scene.remove(p.mesh);
+      particles.confetti.splice(i, 1);
+    }
+  }
+
+  // Healing glow
+  for (let i = particles.healing.length - 1; i >= 0; i--) {
+    const p = particles.healing[i];
+    p.mesh.position.y += p.vy;
+    p.life -= dt;
+    p.mesh.material.opacity = Math.max(0, p.life / 3) * 0.7;
+    if (p.life <= 0) {
+      scene.remove(p.mesh);
+      particles.healing.splice(i, 1);
+    }
+  }
+}
+// ============================================================
+// INPUT HANDLING
+// ============================================================
+document.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; e.preventDefault(); });
+document.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
+
+// Mobile joystick
+const joystickZone = document.getElementById('joystick-zone');
+let joystickEl = null;
+let joystickKnob = null;
+
+function createJoystickVisual() {
+  joystickEl = document.createElement('div');
+  joystickEl.style.cssText = 'position:fixed;width:100px;height:100px;border-radius:50%;border:2px solid rgba(127,219,202,0.3);background:rgba(127,219,202,0.05);display:none;pointer-events:none;z-index:151;';
+  document.body.appendChild(joystickEl);
+
+  joystickKnob = document.createElement('div');
+  joystickKnob.style.cssText = 'position:fixed;width:40px;height:40px;border-radius:50%;background:rgba(127,219,202,0.4);display:none;pointer-events:none;z-index:152;';
+  document.body.appendChild(joystickKnob);
+}
+createJoystickVisual();
+
+joystickZone.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const touch = e.touches[0];
+  joystickData.active = true;
+  joystickData.startX = touch.clientX;
+  joystickData.startY = touch.clientY;
+  joystickEl.style.display = 'block';
+  joystickEl.style.left = (touch.clientX - 50) + 'px';
+  joystickEl.style.top = (touch.clientY - 50) + 'px';
+  joystickKnob.style.display = 'block';
+  joystickKnob.style.left = (touch.clientX - 20) + 'px';
+  joystickKnob.style.top = (touch.clientY - 20) + 'px';
+  AudioEngine.init();
+});
+
+joystickZone.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (!joystickData.active) return;
+  const touch = e.touches[0];
+  let dx = touch.clientX - joystickData.startX;
+  let dy = touch.clientY - joystickData.startY;
+  const maxDist = 40;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist > maxDist) { dx = dx / dist * maxDist; dy = dy / dist * maxDist; }
+  joystickData.dx = dx / maxDist;
+  joystickData.dy = dy / maxDist;
+  joystickKnob.style.left = (joystickData.startX + dx - 20) + 'px';
+  joystickKnob.style.top = (joystickData.startY + dy - 20) + 'px';
+});
+
+joystickZone.addEventListener('touchend', e => {
+  e.preventDefault();
+  joystickData.active = false;
+  joystickData.dx = 0;
+  joystickData.dy = 0;
+  joystickEl.style.display = 'none';
+  joystickKnob.style.display = 'none';
+});
+
+// Action button (mobile)
+document.getElementById('action-btn').addEventListener('touchstart', e => {
+  e.preventDefault();
+  performAction();
+});
+
+// Keyboard action
+document.addEventListener('keydown', e => {
+  if (e.key.toLowerCase() === 'e' && state.phase === 'playing') {
+    performAction();
+  }
+  if (e.key.toLowerCase() === 'm') {
+    AudioEngine.toggleMute();
+  }
+});
+
+// Mute button
+document.getElementById('mute-btn').addEventListener('click', () => AudioEngine.toggleMute());
+
+// Emote buttons
+document.querySelectorAll('.emote-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const emote = btn.dataset.emote;
+    showMessage(btn.textContent, 1500);
+    AudioEngine.playUIClick();
+  });
+});
+
+// Click/tap to init audio
+document.addEventListener('click', () => AudioEngine.init(), { once: true });
+document.addEventListener('touchstart', () => AudioEngine.init(), { once: true });
+
+// ============================================================
+// GAME ACTIONS
+// ============================================================
+function performAction() {
+  if (state.phase !== 'playing') return;
+  const px = playerMesh.position.x;
+  const pz = playerMesh.position.z;
+
+  // Check for supply pickup
+  if (state.carrying < MAX_CARRY) {
+    for (const supply of supplies) {
+      if (!supply.collected && dist2D(playerMesh.position, { x: supply.x, z: supply.z }) < 2) {
+        supply.collected = true;
+        scene.remove(supply.mesh);
+        state.carrying++;
+        updateSupplyIndicator();
+        AudioEngine.playPickup();
+        showMessage('📦 Supply collected!');
+        return;
+      }
+    }
+  }
+
+  // Check for civilian rescue
+  for (const civ of civilians) {
+    if (!civ.rescued && !civ.following && dist2D(playerMesh.position, { x: civ.mesh.position.x, z: civ.mesh.position.z }) < 2.5) {
+      civ.following = true;
+      state.followers.push(civ);
+      AudioEngine.playRescue();
+      showMessage('👥 Civilian following you!');
+      // Wave animation trigger
+      civ.waving = true;
+      civ.waveTime = 0;
+      return;
+    }
+  }
+
+  // Check for delivery at safe zone
+  for (const zone of safeZones) {
+    if (dist2D(playerMesh.position, { x: zone.x, z: zone.z }) < zone.radius) {
+      // Deliver supplies
+      if (state.carrying > 0) {
+        const delivered = state.carrying;
+        state.suppliesDelivered += delivered;
+        state.score += delivered * 100;
+        state.carrying = 0;
+        updateSupplyIndicator();
+        AudioEngine.playDelivery();
+        spawnConfetti(zone.x, 2, zone.z, 20);
+        showMessage(`📦 ${delivered} supplies delivered! +${delivered * 100}`);
+        restoreNearbyBuildings(zone.x, zone.z, 12);
+      }
+
+      // Drop off civilians
+      if (state.followers.length > 0) {
+        const count = state.followers.length;
+        state.civiliansRescued += count;
+        state.score += count * 200;
+        state.followers.forEach(civ => {
+          civ.rescued = true;
+          civ.following = false;
+          civ.mesh.position.set(zone.x + rand(-2, 2), 0, zone.z + rand(-2, 2));
+          // Change color to show rescued
+          civ.mesh.children[0].material.color.set(0x00b894);
+        });
+        state.followers = [];
+        AudioEngine.playRescue();
+        spawnConfetti(zone.x, 2, zone.z, 40);
+        spawnHealingGlow(zone.x, zone.z);
+        showMessage(`👥 ${count} civilians rescued! +${count * 200}`);
+        restoreNearbyBuildings(zone.x, zone.z, 15);
+      }
+
+      updateHUD();
+      checkNegotiationReady();
+      return;
+    }
+  }
+
+  // Check for negotiation marker
+  if (negotiationMarker && dist2D(playerMesh.position, negotiationMarker.position) < 3) {
+    startNegotiation();
+    return;
+  }
+
+  // Check for portal
+  if (portalMesh && dist2D(playerMesh.position, portalMesh.position) < 3) {
+    window.open('https://portal.pieter.com', '_blank');
+    return;
+  }
+}
+
+function restoreNearbyBuildings(x, z, radius) {
+  buildings.forEach(b => {
+    if (!b.restored && dist2D({ x, z }, { x: b.x, z: b.z }) < radius) {
+      b.restored = true;
+      // Animate color change
+      const startColor = b.mat.color.clone();
+      const endColor = b.peaceColor;
+      const startTime = state.gameClock;
+      b.colorAnim = { startColor, endColor, startTime, duration: 1.5 };
+      // Scale pop
+      b.mesh.scale.set(0.85, 0.85, 0.85);
+      b.scaleAnim = { startTime, duration: 0.5 };
+    }
+  });
+}
+
+function checkNegotiationReady() {
+  if (state.suppliesDelivered >= SUPPLIES_NEEDED && state.civiliansRescued >= RESCUES_NEEDED && !negotiationMarker && !state.peaceAchieved) {
+    // Spawn negotiation marker
+    const geo = new THREE.CylinderGeometry(0.5, 0.5, 3, 6);
+    const mat = new THREE.MeshStandardMaterial({ color: 0xffd93d, emissive: 0xffd93d, emissiveIntensity: 0.8 });
+    negotiationMarker = new THREE.Mesh(geo, mat);
+    // Place near center
+    negotiationMarker.position.set(rand(-5, 5), 1.5, rand(-5, 5));
+    scene.add(negotiationMarker);
+
+    // Golden light
+    const light = new THREE.PointLight(0xffd93d, 1, 10);
+    light.position.y = 3;
+    negotiationMarker.add(light);
+
+    showMessage('🕊️ Peace talks available! Find the golden marker.', 3000);
+    updateObjective('Find the golden marker for peace negotiations');
+  }
+}
+
+function updateObjective(text) {
+  document.getElementById('objective').textContent = text;
+}
+
+// ============================================================
+// NEGOTIATION SYSTEM
+// ============================================================
+let negRound = 0;
+let negTimer = null;
+
+function startNegotiation() {
+  state.phase = 'negotiation';
+  negRound = 0;
+  state.negotiationCorrect = 0;
+  document.getElementById('negotiation').classList.add('active');
+  showNegRound();
+}
+
+function showNegRound() {
+  const levelNegs = negotiations[Math.min(state.level, negotiations.length - 1)];
+  if (negRound >= levelNegs.length) {
+    endNegotiation();
+    return;
+  }
+
+  const data = levelNegs[negRound];
+  document.getElementById('neg-title').textContent = `Round ${negRound + 1}/3`;
+  document.getElementById('neg-prompt').textContent = data.prompt;
+
+  const choicesEl = document.getElementById('neg-choices');
+  choicesEl.innerHTML = '';
+
+  // Shuffle choices
+  const shuffled = [...data.choices].sort(() => Math.random() - 0.5);
+  shuffled.forEach(choice => {
+    const btn = document.createElement('div');
+    btn.className = 'neg-choice';
+    btn.textContent = choice.text;
+    btn.addEventListener('click', () => {
+      if (choice.correct) {
+        state.negotiationCorrect++;
+        btn.classList.add('correct');
+        btn.style.background = '#1a3a2a';
+        AudioEngine.playNegSuccess();
+      } else {
+        btn.classList.add('wrong');
+        btn.style.background = '#3a1a1a';
+        AudioEngine.playNegFail();
+      }
+      // Disable all choices
+      choicesEl.querySelectorAll('.neg-choice').forEach(c => c.style.pointerEvents = 'none');
+      // Next round after delay
+      clearInterval(negTimer);
+      setTimeout(() => {
+        negRound++;
+        showNegRound();
+      }, 1200);
+    });
+    choicesEl.appendChild(btn);
+  });
+
+  // Timer
+  let timeLeft = 8;
+  document.getElementById('neg-timer').textContent = timeLeft;
+  clearInterval(negTimer);
+  negTimer = setInterval(() => {
+    timeLeft--;
+    document.getElementById('neg-timer').textContent = timeLeft;
+    if (timeLeft <= 0) {
+      clearInterval(negTimer);
+      negRound++;
+      showNegRound();
+    }
+  }, 1000);
+}
+
+function endNegotiation() {
+  clearInterval(negTimer);
+  document.getElementById('negotiation').classList.remove('active');
+
+  if (state.negotiationCorrect >= 2) {
+    // PEACE ACHIEVED!
+    state.peaceAchieved = true;
+    state.phase = 'playing'; // Continue playing during the peace wave
+    state.peaceCenter = { x: negotiationMarker.position.x, z: negotiationMarker.position.z };
+    scene.remove(negotiationMarker);
+    negotiationMarker = null;
+
+    AudioEngine.playCeasefire();
+    showMessage('🕊️ CEASEFIRE ACHIEVED! ✨', 4000);
+    updateObjective('Peace spreads across the city...');
+
+    // Start peace wave animation
+    state.peaceProgress = 0;
+
+    // After wave completes, show level complete
+    setTimeout(() => {
+      showLevelComplete();
+    }, 7000);
+  } else {
+    state.phase = 'playing';
+    showMessage('Negotiations failed... Try again.', 2000);
+    // Reset marker so they can try again
+    if (negotiationMarker) scene.remove(negotiationMarker);
+    negotiationMarker = null;
+    setTimeout(() => checkNegotiationReady(), 3000);
+  }
+}
+
+function showLevelComplete() {
+  state.phase = 'levelComplete';
+  document.getElementById('level-complete').classList.add('active');
+  const lvl = levels[state.level];
+  document.getElementById('peace-city-name').textContent = `${lvl.name} Liberated`;
+
+  const statsEl = document.getElementById('stats-list');
+  statsEl.innerHTML = '';
+  const stats = [
+    ['Supplies Delivered', state.suppliesDelivered],
+    ['Civilians Rescued', state.civiliansRescued],
+    ['Negotiations Won', `${state.negotiationCorrect}/3`],
+    ['Total Score', state.score],
+  ];
+  stats.forEach(([label, val]) => {
+    const row = document.createElement('div');
+    row.className = 'stat-row';
+    row.innerHTML = `<span>${label}</span><span class="stat-val">${val}</span>`;
+    statsEl.appendChild(row);
+  });
+
+  // Spawn portal
+  if (!portalMesh) {
+    const ring = new THREE.TorusGeometry(2, 0.3, 8, 32);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x7fdbca, emissive: 0x7fdbca, emissiveIntensity: 1.0 });
+    portalMesh = new THREE.Mesh(ring, mat);
+    portalMesh.position.set(5, 2, 5);
+    portalMesh.rotation.x = PI / 2;
+    scene.add(portalMesh);
+
+    const portalLight = new THREE.PointLight(0x7fdbca, 2, 15);
+    portalLight.position.y = 2;
+    portalMesh.add(portalLight);
+  }
+}
+
+document.getElementById('next-level-btn').addEventListener('click', () => {
+  if (state.level < levels.length - 1) {
+    state.level++;
+    startLevel();
+  } else {
+    showMessage('🌍 You brought peace to all cities! You win!', 5000);
+  }
+  document.getElementById('level-complete').classList.remove('active');
+});
+
+document.getElementById('portal-btn').addEventListener('click', () => {
+  window.open('https://portal.pieter.com', '_blank');
+});
+
+// ============================================================
+// GAME LOOP
+// ============================================================
+let footstepTimer = 0;
+
+function update(dt) {
+  if (state.phase !== 'playing') return;
+
+  state.gameClock += dt;
+  state.dayTime = (state.dayTime + dt * 0.01) % 1;
+
+  const lvl = levels[state.level];
+  const half = lvl.size / 2;
+
+  // --- Player movement ---
+  let moveX = 0, moveZ = 0;
+  const speed = 8;
+
+  if (keys['w'] || keys['arrowup']) moveZ -= 1;
+  if (keys['s'] || keys['arrowdown']) moveZ += 1;
+  if (keys['a'] || keys['arrowleft']) moveX -= 1;
+  if (keys['d'] || keys['arrowright']) moveX += 1;
+
+  // Mobile joystick
+  if (joystickData.active) {
+    moveX = joystickData.dx;
+    moveZ = joystickData.dy;
+  }
+
+  // Normalize
+  const len = Math.sqrt(moveX * moveX + moveZ * moveZ);
+  if (len > 0) {
+    moveX /= len;
+    moveZ /= len;
+  }
+
+  // Smooth acceleration
+  playerVel.x = lerp(playerVel.x, moveX * speed, 0.15);
+  playerVel.z = lerp(playerVel.z, moveZ * speed, 0.15);
+
+  playerMesh.position.x += playerVel.x * dt;
+  playerMesh.position.z += playerVel.z * dt;
+
+  // Clamp to map
+  playerMesh.position.x = clamp(playerMesh.position.x, -half, half);
+  playerMesh.position.z = clamp(playerMesh.position.z, -half, half);
+
+  // Player rotation (face move direction)
+  if (len > 0.1) {
+    const targetRot = Math.atan2(playerVel.x, playerVel.z);
+    playerMesh.rotation.y = lerp(playerMesh.rotation.y, targetRot, 0.1);
+  }
+
+  // Bob animation
+  const isMoving = Math.abs(playerVel.x) > 0.5 || Math.abs(playerVel.z) > 0.5;
+  if (isMoving) {
+    playerMesh.position.y = Math.sin(state.gameClock * 8) * 0.08;
+    footstepTimer += dt;
+    if (footstepTimer > 0.35) {
+      footstepTimer = 0;
+      AudioEngine.playFootstep();
+    }
+  } else {
+    playerMesh.position.y = lerp(playerMesh.position.y, 0, 0.1);
+  }
+
+  // Sparkle trail when carrying
+  if (state.carrying > 0 && isMoving && Math.random() < 0.3) {
+    const sparkGeo = new THREE.SphereGeometry(0.06, 4, 4);
+    const sparkMat = new THREE.MeshBasicMaterial({ color: 0xffd93d, transparent: true });
+    const spark = new THREE.Mesh(sparkGeo, sparkMat);
+    spark.position.copy(playerMesh.position);
+    spark.position.y += 0.5;
+    scene.add(spark);
+    particles.healing.push({ mesh: spark, vy: 0.02, life: 1 });
+  }
+
+  // --- Camera follow ---
+  const camOffset = new THREE.Vector3(0, 20 + state.level * 3, 18 + state.level * 2);
+  cameraTarget.lerp(new THREE.Vector3(
+    playerMesh.position.x + camOffset.x,
+    camOffset.y,
+    playerMesh.position.z + camOffset.z
+  ), 0.05);
+  camera.position.copy(cameraTarget);
+  camera.lookAt(playerMesh.position.x, 0, playerMesh.position.z);
+
+  // --- Supply bob animation ---
+  supplies.forEach(s => {
+    if (!s.collected) {
+      s.mesh.position.y = 0.6 + Math.sin(state.gameClock * 2 + s.bobPhase) * 0.2;
+      s.mesh.rotation.y += dt * 0.5;
+    }
+  });
+
+  // --- Civilian AI ---
+  civilians.forEach(civ => {
+    if (civ.rescued) return;
+
+    if (civ.following) {
+      // Follow player in a line
+      const idx = state.followers.indexOf(civ);
+      let targetX, targetZ;
+      if (idx === 0) {
+        targetX = playerMesh.position.x - playerVel.x * 0.15;
+        targetZ = playerMesh.position.z - playerVel.z * 0.15;
+      } else {
+        const prev = state.followers[idx - 1];
+        targetX = prev.mesh.position.x;
+        targetZ = prev.mesh.position.z;
+      }
+      const followDist = 1.5 + idx * 0.5;
+      const dx = targetX - civ.mesh.position.x;
+      const dz = targetZ - civ.mesh.position.z;
+      const d = Math.sqrt(dx * dx + dz * dz);
+      if (d > followDist) {
+        civ.mesh.position.x += (dx / d) * speed * 0.7 * dt;
+        civ.mesh.position.z += (dz / d) * speed * 0.7 * dt;
+        civ.mesh.rotation.y = Math.atan2(dx, dz);
+      }
+    } else {
+      // Wander
+      civ.wanderTimer -= dt;
+      if (civ.wanderTimer <= 0) {
+        civ.wanderAngle = rand(0, TWO_PI);
+        civ.wanderTimer = rand(2, 5);
+      }
+      const wx = Math.sin(civ.wanderAngle) * 1.5 * dt;
+      const wz = Math.cos(civ.wanderAngle) * 1.5 * dt;
+      civ.mesh.position.x += wx;
+      civ.mesh.position.z += wz;
+      civ.mesh.rotation.y = civ.wanderAngle;
+
+      // Stay near original position
+      const distFromHome = dist2D(civ.mesh.position, { x: civ.originalX, z: civ.originalZ });
+      if (distFromHome > 8) {
+        civ.wanderAngle = Math.atan2(civ.originalX - civ.mesh.position.x, civ.originalZ - civ.mesh.position.z);
+      }
+    }
+
+    // Wave animation
+    if (civ.waving) {
+      civ.waveTime += dt;
+      if (civ.hands) {
+        civ.hands.right.position.y = 0.7 + Math.sin(civ.waveTime * 8) * 0.3;
+        civ.hands.right.position.x = 0.35 + Math.sin(civ.waveTime * 8) * 0.1;
+      }
+      if (civ.waveTime > 2) civ.waving = false;
+    }
+  });
+
+  // --- Danger zones ---
+  let inDanger = false;
+  dangerZones.forEach(dz => {
+    const d = dist2D(playerMesh.position, { x: dz.x, z: dz.z });
+    if (d < dz.radius) {
+      inDanger = true;
+      state.morale -= dt * 15;
+      if (state.morale <= 0) {
+        state.morale = MORALE_MAX * 0.5;
+        playerMesh.position.set(0, 0, 0);
+        showMessage('⚠️ Morale depleted! Returned to base.', 2000);
+        AudioEngine.playDanger();
+        // Drop followers
+        state.followers.forEach(f => { f.following = false; });
+        state.followers = [];
+      }
+    }
+    // Pulse danger zone opacity
+    dz.mesh.material.opacity = 0.1 + Math.sin(state.gameClock * 3) * 0.08;
+    dz.mesh.material.emissiveIntensity = 0.2 + Math.sin(state.gameClock * 2) * 0.15;
+  });
+
+  // Safe zone morale regen
+  let nearSafe = false;
+  safeZones.forEach(sz => {
+    if (dist2D(playerMesh.position, { x: sz.x, z: sz.z }) < sz.radius) {
+      nearSafe = true;
+      state.morale = Math.min(MORALE_MAX, state.morale + dt * 20);
+    }
+    // Pulse safe zone
+    sz.mesh.material.opacity = 0.2 + Math.sin(state.gameClock * 1.5) * 0.1;
+  });
+
+  if (!nearSafe && !inDanger) {
+    state.morale = Math.min(MORALE_MAX, state.morale + dt * 2);
+  }
+
+  // --- Building animations ---
+  buildings.forEach(b => {
+    if (b.colorAnim) {
+      const t = (state.gameClock - b.colorAnim.startTime) / b.colorAnim.duration;
+      if (t >= 1) {
+        b.mat.color.copy(b.colorAnim.endColor);
+        b.colorAnim = null;
+      } else {
+        b.mat.color.copy(b.colorAnim.startColor).lerp(b.colorAnim.endColor, t);
+      }
+    }
+    if (b.scaleAnim) {
+      const t = (state.gameClock - b.scaleAnim.startTime) / b.scaleAnim.duration;
+      if (t >= 1) {
+        b.mesh.scale.set(1, 1, 1);
+        b.scaleAnim = null;
+      } else {
+        const s = 0.85 + 0.15 * (1 - Math.pow(1 - t, 3));
+        b.mesh.scale.set(s, s, s);
+      }
+    }
+  });
+
+  // --- Negotiation marker animation ---
+  if (negotiationMarker) {
+    negotiationMarker.rotation.y += dt * 1.5;
+    negotiationMarker.position.y = 1.5 + Math.sin(state.gameClock * 2) * 0.5;
+  }
+
+  // --- Portal animation ---
+  if (portalMesh) {
+    portalMesh.rotation.z += dt * 0.8;
+  }
+
+  // --- Peace wave ---
+  if (state.peaceAchieved && state.peaceProgress < 1) {
+    state.peaceProgress += dt * 0.15;
+    state.peaceProgress = Math.min(1, state.peaceProgress);
+    updateSky();
+
+    // Restore all buildings in wave radius
+    if (state.peaceCenter) {
+      const waveRadius = state.peaceProgress * levels[state.level].size;
+      buildings.forEach(b => {
+        if (!b.restored && dist2D(state.peaceCenter, { x: b.x, z: b.z }) < waveRadius) {
+          b.restored = true;
+          const startColor = b.mat.color.clone();
+          b.colorAnim = { startColor, endColor: b.peaceColor, startTime: state.gameClock, duration: 1.5 };
+          b.mesh.scale.set(0.85, 0.85, 0.85);
+          b.scaleAnim = { startTime: state.gameClock, duration: 0.5 };
+          spawnHealingGlow(b.x, b.z);
+        }
+      });
+
+      // Trees turn green
+      trees.forEach(t => {
+        const td = dist2D(state.peaceCenter, { x: t.position.x, z: t.position.z });
+        if (td < waveRadius) {
+          const foliage = t.children[1];
+          if (foliage) foliage.material.color.lerp(new THREE.Color(0x2ecc71), 0.05);
+        }
+      });
+    }
+  }
+
+  // --- Audio layers ---
+  AudioEngine.updateLayers(inDanger, nearSafe, state.peaceProgress);
+
+  // --- Update HUD ---
+  updateHUD();
+  updateMorale();
+  updateMinimap();
+  updateParticles(dt);
+}
+
+// ============================================================
+// HUD & MINIMAP
+// ============================================================
+function updateHUD() {
+  document.getElementById('hud-supplies').textContent = state.suppliesDelivered;
+  document.getElementById('hud-rescued').textContent = state.civiliansRescued;
+  document.getElementById('hud-score').textContent = state.score;
+  document.getElementById('hud-level').textContent = levels[state.level].name;
+}
+
+function updateMorale() {
+  document.getElementById('morale-bar-inner').style.width = (state.morale / MORALE_MAX * 100) + '%';
+}
+
+function updateSupplyIndicator() {
+  const dots = document.querySelectorAll('.supply-dot');
+  dots.forEach((dot, i) => {
+    dot.classList.toggle('filled', i < state.carrying);
+  });
+}
+
+function updateMinimap() {
+  if (!minimapCtx) return;
+  const ctx = minimapCtx;
+  const size = 140;
+  const lvl = levels[state.level];
+  const half = lvl.size / 2;
+  const scale = size / lvl.size;
+
+  ctx.fillStyle = '#0a0a1a';
+  ctx.fillRect(0, 0, size, size);
+
+  // Buildings
+  buildings.forEach(b => {
+    ctx.fillStyle = b.restored ? '#55efc4' : '#444';
+    const bx = (b.x + half) * scale;
+    const bz = (b.z + half) * scale;
+    ctx.fillRect(bx - 1, bz - 1, 3, 3);
+  });
+
+  // Safe zones
+  safeZones.forEach(sz => {
+    ctx.fillStyle = 'rgba(0,184,148,0.5)';
+    ctx.beginPath();
+    ctx.arc((sz.x + half) * scale, (sz.z + half) * scale, sz.radius * scale, 0, TWO_PI);
+    ctx.fill();
+  });
+
+  // Danger zones
+  dangerZones.forEach(dz => {
+    ctx.fillStyle = 'rgba(255,107,107,0.3)';
+    ctx.beginPath();
+    ctx.arc((dz.x + half) * scale, (dz.z + half) * scale, dz.radius * scale, 0, TWO_PI);
+    ctx.fill();
+  });
+
+  // Supplies
+  supplies.forEach(s => {
+    if (!s.collected) {
+      ctx.fillStyle = '#ffd93d';
+      ctx.fillRect((s.x + half) * scale - 1, (s.z + half) * scale - 1, 3, 3);
+    }
+  });
+
+  // Civilians
+  civilians.forEach(c => {
+    if (!c.rescued) {
+      ctx.fillStyle = c.following ? '#00b894' : '#dfe6e9';
+      const cx = (c.mesh.position.x + half) * scale;
+      const cz = (c.mesh.position.z + half) * scale;
+      ctx.fillRect(cx - 1, cz - 1, 2, 2);
+    }
+  });
+
+  // Negotiation marker
+  if (negotiationMarker) {
+    ctx.fillStyle = '#ffd93d';
+    const nx = (negotiationMarker.position.x + half) * scale;
+    const nz = (negotiationMarker.position.z + half) * scale;
+    ctx.beginPath();
+    ctx.arc(nx, nz, 4, 0, TWO_PI);
+    ctx.fill();
+  }
+
+  // Player
+  ctx.fillStyle = '#0984e3';
+  const px = (playerMesh.position.x + half) * scale;
+  const pz = (playerMesh.position.z + half) * scale;
+  ctx.beginPath();
+  ctx.arc(px, pz, 3, 0, TWO_PI);
+  ctx.fill();
+  ctx.strokeStyle = '#7fdbca';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+// ============================================================
+// GAME INITIALIZATION & FLOW
+// ============================================================
+function startLevel() {
+  state.suppliesDelivered = 0;
+  state.civiliansRescued = 0;
+  state.carrying = 0;
+  state.followers = [];
+  state.morale = MORALE_MAX;
+  state.peaceAchieved = false;
+  state.peaceProgress = 0;
+  state.peaceCenter = null;
+  state.negotiationCorrect = 0;
+  state.gameClock = 0;
+
+  generateCity();
+  updateHUD();
+  updateSupplyIndicator();
+  updateMorale();
+  updateObjective('Deliver supplies to safe zones (green) and rescue civilians (press E or tap ACT)');
+
+  state.phase = 'playing';
+}
+
+// Check for Vibeverse portal incoming
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('portal') === 'true' && urlParams.get('username')) {
+  state.username = urlParams.get('username');
+}
+
+// Loading simulation
+let loadProgress = 0;
+const loadBar = document.getElementById('load-bar');
+const loadInterval = setInterval(() => {
+  loadProgress += rand(5, 15);
+  if (loadProgress >= 100) {
+    loadProgress = 100;
+    loadBar.style.width = '100%';
+    clearInterval(loadInterval);
+    setTimeout(() => {
+      document.getElementById('loading').classList.add('hidden');
+      if (state.username) {
+        // Came from portal, skip username
+        startGame();
+      } else {
+        document.getElementById('username-modal').classList.add('active');
+        document.getElementById('username-input').focus();
+      }
+    }, 500);
+  } else {
+    loadBar.style.width = loadProgress + '%';
+  }
+}, 150);
+
+// Username entry
+document.getElementById('start-btn').addEventListener('click', () => {
+  const name = document.getElementById('username-input').value.trim();
+  state.username = name || 'Aid Worker';
+  document.getElementById('username-modal').classList.remove('active');
+  AudioEngine.init();
+  startGame();
+});
+
+document.getElementById('username-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('start-btn').click();
+});
+
+function startGame() {
+  // Show all UI
+  document.getElementById('hud').classList.add('active');
+  document.getElementById('morale-bar-wrap').classList.add('active');
+  document.getElementById('supply-indicator').classList.add('active');
+  document.getElementById('minimap').classList.add('active');
+  document.getElementById('mute-btn').classList.add('active');
+  document.getElementById('emote-bar').classList.add('active');
+  document.getElementById('objective').classList.add('active');
+
+  if (isMobile) {
+    document.getElementById('joystick-zone').classList.add('active');
+    document.getElementById('action-btn').classList.add('active');
+  }
+
+  document.getElementById('mute-btn').textContent = state.muted ? '🔇' : '🔊';
+
+  initScene();
+  startLevel();
+  animate();
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05); // Cap delta to prevent jumps
+  update(dt);
+  renderer.render(scene, camera);
+}
+</script>
+</body>
+</html>
