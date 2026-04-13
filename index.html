@@ -137,23 +137,85 @@ canvas { display: block; width: 100vw; height: 100vh; }
 .supply-dot { width: 16px; height: 16px; border-radius: 4px; border: 2px solid rgba(255,217,61,0.3); background: rgba(20,20,40,0.6); transition: all 0.3s; }
 .supply-dot.filled { background: #ffd93d; border-color: #ffd93d; box-shadow: 0 0 10px rgba(255,217,61,0.5); }
 
-/* Negotiation overlay */
-#negotiation { position: fixed; inset: 0; background: rgba(5,5,15,0.92); display: none; align-items: center; justify-content: center; z-index: 500; backdrop-filter: blur(4px); }
-#negotiation.active { display: flex; }
-#negotiation-box { text-align: center; max-width: 600px; width: 90vw; }
-#negotiation-box h2 { color: #ffd93d; font-size: clamp(1.3rem, 3vw, 2rem); margin-bottom: 0.8rem; letter-spacing: 0.1em; font-weight: 300; }
-#negotiation-box p { color: #b0b0c0; font-size: clamp(0.85rem, 2vw, 1rem); margin-bottom: 1.8rem; line-height: 1.6; }
-.neg-choices { display: flex; flex-direction: column; gap: 0.7rem; }
-.neg-choice {
-  padding: 1rem 1.5rem; background: rgba(22,33,62,0.8);
-  border: 1px solid rgba(127,219,202,0.15); border-radius: 12px;
-  color: #d0d0e0; font-size: clamp(0.82rem, 1.8vw, 0.95rem);
-  cursor: pointer; pointer-events: auto; transition: all 0.25s; text-align: left;
+/* Peace Talks Button */
+#peace-talks-btn {
+  position: fixed; bottom: 7rem; left: 50%; transform: translateX(-50%);
+  padding: 0.9rem 2.5rem; font-size: clamp(0.9rem, 2vw, 1.05rem);
+  background: linear-gradient(135deg, #ffd93d, #f9a825); color: #1a1a2e;
+  font-weight: 700; border: none; border-radius: 14px; cursor: pointer;
+  letter-spacing: 0.08em; z-index: 200; display: none; pointer-events: auto;
+  box-shadow: 0 0 30px rgba(255,217,61,0.4), 0 4px 15px rgba(0,0,0,0.3);
+  animation: peace-btn-pulse 2s ease-in-out infinite;
+  text-transform: uppercase;
 }
-.neg-choice:hover { border-color: #7fdbca; background: rgba(30,45,70,0.9); transform: translateX(4px); }
-.neg-choice.correct { border-color: #7fdbca; background: rgba(20,60,40,0.8); }
-.neg-choice.wrong { border-color: #ff6b6b; background: rgba(60,20,20,0.8); }
-#neg-timer { color: #ffd93d; font-size: 2rem; margin-bottom: 0.8rem; font-weight: 200; }
+#peace-talks-btn.active { display: block; }
+@keyframes peace-btn-pulse {
+  0%, 100% { box-shadow: 0 0 30px rgba(255,217,61,0.3), 0 4px 15px rgba(0,0,0,0.3); transform: translateX(-50%) scale(1); }
+  50% { box-shadow: 0 0 50px rgba(255,217,61,0.6), 0 6px 20px rgba(0,0,0,0.3); transform: translateX(-50%) scale(1.03); }
+}
+
+/* Round Table Discussion */
+#negotiation { position: fixed; inset: 0; background: rgba(5,5,12,0.96); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 500; backdrop-filter: blur(6px); }
+#negotiation.active { display: flex; }
+
+.round-table-scene { width: min(700px, 95vw); max-height: 90vh; overflow-y: auto; }
+
+/* Table header */
+.rt-header { text-align: center; margin-bottom: 1.2rem; }
+.rt-header h2 { color: #ffd93d; font-size: clamp(1.2rem, 2.5vw, 1.6rem); font-weight: 300; letter-spacing: 0.15em; margin-bottom: 0.3rem; }
+.rt-round { color: rgba(200,200,220,0.4); font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; }
+
+/* Discussion log */
+.discussion-log { display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 1.5rem; min-height: 100px; }
+
+/* Character message bubbles */
+.char-msg {
+  display: flex; gap: 0.8rem; align-items: flex-start;
+  animation: msg-appear 0.5s ease-out forwards;
+  opacity: 0; transform: translateY(10px);
+}
+@keyframes msg-appear { to { opacity: 1; transform: translateY(0); } }
+
+.char-msg.right { flex-direction: row-reverse; }
+
+.char-avatar {
+  width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem; border: 2px solid rgba(255,255,255,0.1);
+}
+.char-avatar.faction-a { background: linear-gradient(135deg, #e53935, #c62828); }
+.char-avatar.faction-b { background: linear-gradient(135deg, #1e88e5, #1565c0); }
+.char-avatar.mediator { background: linear-gradient(135deg, #ffd93d, #f9a825); }
+.char-avatar.player { background: linear-gradient(135deg, #00b894, #00897b); }
+
+.char-bubble {
+  background: rgba(22,33,62,0.85); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px; padding: 0.7rem 1rem; max-width: 80%;
+}
+.char-msg.right .char-bubble { background: rgba(0,77,64,0.5); border-color: rgba(127,219,202,0.2); }
+
+.char-name { font-size: 0.65rem; color: rgba(200,200,220,0.5); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.25rem; }
+.char-text { color: #d0d0e0; font-size: clamp(0.8rem, 1.6vw, 0.9rem); line-height: 1.5; }
+
+/* Player choice buttons */
+.player-choices { display: flex; flex-direction: column; gap: 0.6rem; }
+.player-choice {
+  padding: 0.85rem 1.2rem; background: rgba(0,77,64,0.3);
+  border: 1px solid rgba(127,219,202,0.2); border-radius: 12px;
+  color: #c0e0d8; font-size: clamp(0.8rem, 1.6vw, 0.9rem);
+  cursor: pointer; pointer-events: auto; transition: all 0.25s; text-align: left;
+  display: flex; align-items: center; gap: 0.6rem;
+}
+.player-choice:hover { border-color: #7fdbca; background: rgba(0,100,80,0.4); transform: translateX(4px); }
+.player-choice.correct { border-color: #7fdbca; background: rgba(20,80,50,0.6); }
+.player-choice.wrong { border-color: #ff6b6b; background: rgba(80,20,20,0.5); }
+.choice-icon { font-size: 1.2rem; flex-shrink: 0; }
+
+/* Tension meter */
+.tension-bar-wrap { margin-bottom: 1rem; }
+.tension-label { display: flex; justify-content: space-between; font-size: 0.65rem; color: rgba(200,200,220,0.4); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+.tension-bar { height: 4px; background: rgba(30,30,50,0.8); border-radius: 2px; overflow: hidden; }
+.tension-fill { height: 100%; width: 70%; background: linear-gradient(90deg, #00b894, #ffd93d, #ff6b6b); border-radius: 2px; transition: width 0.8s ease; }
 
 /* Level Complete */
 #level-complete { position: fixed; inset: 0; background: rgba(5,5,15,0.92); display: none; align-items: center; justify-content: center; z-index: 600; backdrop-filter: blur(4px); }
@@ -244,13 +306,22 @@ canvas { display: block; width: 100vw; height: 100vh; }
 <div id="supply-indicator"><div class="supply-dot"></div><div class="supply-dot"></div><div class="supply-dot"></div></div>
 <div id="objective">Deliver supplies and rescue civilians to bring peace</div>
 
-<!-- Negotiation -->
+<!-- Peace Talks Button (appears during gameplay) -->
+<button id="peace-talks-btn">🕊️ Enter Peace Talks</button>
+
+<!-- Round Table Discussion -->
 <div id="negotiation">
-  <div id="negotiation-box">
-    <div id="neg-timer">8</div>
-    <h2 id="neg-title">Peace Negotiation</h2>
-    <p id="neg-prompt">Choose wisely...</p>
-    <div class="neg-choices" id="neg-choices"></div>
+  <div class="round-table-scene">
+    <div class="rt-header">
+      <h2 id="rt-title">🕊️ Peace Talks — Round 1</h2>
+      <div class="rt-round" id="rt-subtitle">The factions have agreed to meet</div>
+    </div>
+    <div class="tension-bar-wrap">
+      <div class="tension-label"><span>Peace</span><span id="tension-val">Neutral</span><span>Conflict</span></div>
+      <div class="tension-bar"><div class="tension-fill" id="tension-fill"></div></div>
+    </div>
+    <div class="discussion-log" id="discussion-log"></div>
+    <div class="player-choices" id="player-choices"></div>
   </div>
 </div>
 
@@ -345,67 +416,155 @@ function showMessage(text, duration = 2000) {
 }
 
 // --- Negotiation data ---
-const negotiations = [
-  [
-    { prompt: "The local militia demands you leave. How do you respond?",
-      choices: [
-        { text: "🕊️ 'We're here to help everyone, including your families. Let us deliver medicine.'", correct: true },
-        { text: "⚔️ 'We won't be intimidated. Stand down or face consequences.'", correct: false },
-        { text: "🏃 'Fine, we'll leave this sector immediately.'", correct: false }
-      ]},
-    { prompt: "A faction leader offers to protect your convoy — for a price.",
-      choices: [
-        { text: "💰 Accept the deal and pay for protection.", correct: false },
-        { text: "🤝 'Instead of payment, let us set up a medical clinic for your people too.'", correct: true },
-        { text: "🚫 Refuse and try to sneak through another route.", correct: false }
-      ]},
-    { prompt: "Both sides are at the table. What's your opening move?",
-      choices: [
-        { text: "📋 Present evidence of civilian suffering to both sides.", correct: true },
-        { text: "💪 Threaten international sanctions if they don't comply.", correct: false },
-        { text: "🎁 Offer weapons buyback program immediately.", correct: false }
-      ]}
-  ],
-  [
-    { prompt: "The port authority has blocked humanitarian ships. Your response?",
-      choices: [
-        { text: "🕊️ 'These ships carry only food and medicine. Inspect them yourselves.'", correct: true },
-        { text: "⚔️ Force the blockade with international escorts.", correct: false },
-        { text: "🏃 Reroute all supplies through dangerous overland routes.", correct: false }
-      ]},
-    { prompt: "A ceasefire is proposed but one faction wants territorial concessions.",
-      choices: [
-        { text: "🤝 'Let's start with a 48-hour humanitarian pause — no conditions.'", correct: true },
-        { text: "💰 Offer economic incentives for the territorial concession.", correct: false },
-        { text: "📋 Insist on full withdrawal before any talks.", correct: false }
-      ]},
-    { prompt: "Final round: How do you secure lasting peace?",
-      choices: [
-        { text: "🏗️ 'Together, rebuild infrastructure that serves both communities.'", correct: true },
-        { text: "👮 Demand international peacekeeping forces permanently.", correct: false },
-        { text: "📝 Push for a quick signed agreement before anyone changes their mind.", correct: false }
-      ]}
-  ],
-  [
-    { prompt: "Multiple factions are fighting in the capital. Your first move?",
-      choices: [
-        { text: "🕊️ Establish neutral safe corridors that all sides agree to respect.", correct: true },
-        { text: "⚔️ Ally with the strongest faction to end it quickly.", correct: false },
-        { text: "🏃 Evacuate and wait for the fighting to stop.", correct: false }
-      ]},
-    { prompt: "A misinformation campaign is turning civilians against aid workers.",
-      choices: [
-        { text: "📻 Set up a community radio station run by local journalists.", correct: true },
-        { text: "📋 Issue official statements denying the claims.", correct: false },
-        { text: "🚫 Ignore it and keep working.", correct: false }
-      ]},
-    { prompt: "The final peace summit. What seals the deal?",
-      choices: [
-        { text: "🤝 'Let the children from both sides present their hopes for the future.'", correct: true },
-        { text: "💰 Massive international aid package conditional on peace.", correct: false },
-        { text: "📝 A lengthy legal framework drafted by international lawyers.", correct: false }
-      ]}
-  ]
+// Round Table Discussion Data — character-driven dialogue sequences
+const peaceDialogues = [
+  // LEVEL 1 — Small Town
+  {
+    title: 'Small Town Peace Summit',
+    subtitle: 'Two rival neighborhood factions have agreed to meet',
+    characters: {
+      factionA: { name: 'Commander Rashid', emoji: '🔴', faction: 'faction-a' },
+      factionB: { name: 'Captain Elena', emoji: '🔵', faction: 'faction-b' },
+      mediator: { name: 'Elder Amara', emoji: '🟡', faction: 'mediator' },
+    },
+    rounds: [
+      {
+        dialogue: [
+          { speaker: 'mediator', text: 'Thank you all for coming. The people of this town have suffered enough. Let us find a way forward.' },
+          { speaker: 'factionA', text: 'My people were here first. We won\'t share our resources with outsiders who brought nothing but trouble.' },
+          { speaker: 'factionB', text: 'Outsiders? We\'ve been protecting this town while your militia looted the market!' },
+          { speaker: 'mediator', text: 'Aid Worker — you\'ve seen both sides. What do you propose?' },
+        ],
+        choices: [
+          { text: '🕊️ "I\'ve delivered supplies to families on both sides. They all need the same things — food, medicine, safety."', correct: true, impact: 'Both commanders pause. They hadn\'t considered the common ground.', icon: '🕊️' },
+          { text: '⚔️ "Commander Rashid, your militia needs to stand down first. Then we can talk."', correct: false, impact: 'Rashid slams the table. "So you\'ve already taken sides!"', icon: '⚔️' },
+          { text: '🏃 "Maybe we should postpone this until tensions cool down."', correct: false, impact: 'Elder Amara shakes her head. "We may not get another chance."', icon: '🏃' },
+        ]
+      },
+      {
+        dialogue: [
+          { speaker: 'factionA', text: 'Fine. Even if we agree on something, who enforces it? I don\'t trust her soldiers near my people.' },
+          { speaker: 'factionB', text: 'The feeling is mutual. Your fighters ambushed our patrol last month.' },
+          { speaker: 'mediator', text: 'We need a trust-building mechanism. Aid Worker, you\'ve been working with both communities...' },
+        ],
+        choices: [
+          { text: '🤝 "What if we open a shared medical clinic at the market? Both sides benefit, both sides protect it."', correct: true, impact: 'Elena nods slowly. "A clinic... my people do need one." Rashid considers it.', icon: '🤝' },
+          { text: '💰 "I can arrange for international monitors to watch both sides."', correct: false, impact: 'Rashid scoffs. "More outsiders telling us what to do."', icon: '💰' },
+          { text: '📋 "Let\'s draw a line down the middle of town. Each side stays on their half."', correct: false, impact: 'Amara frowns. "Division is what caused this in the first place."', icon: '📋' },
+        ]
+      },
+      {
+        dialogue: [
+          { speaker: 'factionB', text: 'A shared clinic... I could agree to that. But what about the bigger picture?' },
+          { speaker: 'factionA', text: 'She\'s right. One clinic won\'t fix everything. What happens tomorrow?' },
+          { speaker: 'mediator', text: 'This is the moment. Aid Worker, how do we seal this peace?' },
+        ],
+        choices: [
+          { text: '✨ "Let the children from both neighborhoods play together again. Start rebuilding from the youngest generation."', correct: true, impact: 'Silence falls. Both commanders look away — remembering what peace looked like. Rashid extends his hand to Elena.', icon: '✨' },
+          { text: '💪 "Sign a formal agreement with international backing and consequences for violations."', correct: false, impact: 'Rashid pushes back. "Paper agreements mean nothing here. We need something real."', icon: '💪' },
+          { text: '📝 "Let\'s just agree to stop fighting and figure out the details later."', correct: false, impact: 'Elena crosses her arms. "Vague promises won\'t protect my people."', icon: '📝' },
+        ]
+      }
+    ]
+  },
+  // LEVEL 2 — Port City
+  {
+    title: 'Port City Peace Accord',
+    subtitle: 'The blockade has brought both sides to the brink',
+    characters: {
+      factionA: { name: 'Admiral Petrov', emoji: '🔴', faction: 'faction-a' },
+      factionB: { name: 'Governor Saleh', emoji: '🔵', faction: 'faction-b' },
+      mediator: { name: 'Ambassador Chen', emoji: '🟡', faction: 'mediator' },
+    },
+    rounds: [
+      {
+        dialogue: [
+          { speaker: 'mediator', text: 'The port has been closed for weeks. Supplies are running out. People are dying.' },
+          { speaker: 'factionA', text: 'The blockade stays until the governor surrenders the weapons cache in the warehouse district.' },
+          { speaker: 'factionB', text: 'Those are defensive weapons! Your navy has been shelling our coast!' },
+          { speaker: 'mediator', text: 'Aid Worker, you\'ve been on the ground. What have you seen?' },
+        ],
+        choices: [
+          { text: '🕊️ "I\'ve seen children on both sides of this port going hungry. These ships carry food and medicine — inspect them yourselves."', correct: true, impact: 'Petrov hesitates. He didn\'t realize the impact on his own supporters near the coast.', icon: '🕊️' },
+          { text: '⚔️ "Admiral, the international community won\'t tolerate this blockade much longer."', correct: false, impact: 'Petrov stands. "Is that a threat? This meeting is over."', icon: '⚔️' },
+          { text: '🏃 "Can we reroute supplies through the overland routes instead?"', correct: false, impact: 'Saleh shakes his head. "The mountain passes are mined. People will die."', icon: '🏃' },
+        ]
+      },
+      {
+        dialogue: [
+          { speaker: 'factionA', text: 'Perhaps... a temporary opening. But I need something in return.' },
+          { speaker: 'factionB', text: 'I won\'t negotiate under duress. Remove the ships first.' },
+          { speaker: 'mediator', text: 'We\'re close. Aid Worker, can you bridge this gap?' },
+        ],
+        choices: [
+          { text: '🤝 "A 48-hour humanitarian pause. No conditions. Both sides allow aid through. Use that time to build trust."', correct: true, impact: 'Both leaders look at each other. A pause... that\'s something neither has to lose face over.', icon: '🤝' },
+          { text: '💰 "What if we bring in economic development funds? A rebuilt port benefits everyone."', correct: false, impact: 'Saleh waves his hand. "Money won\'t stop the shells from falling."', icon: '💰' },
+          { text: '📋 "Let\'s get international monitors to verify both sides\'s claims."', correct: false, impact: 'Petrov narrows his eyes. "I don\'t answer to foreign inspectors."', icon: '📋' },
+        ]
+      },
+      {
+        dialogue: [
+          { speaker: 'factionB', text: 'A pause could work. But what comes after? I\'ve seen too many broken ceasefires.' },
+          { speaker: 'factionA', text: 'She\'s right. I need assurance this isn\'t just a delay tactic.' },
+          { speaker: 'mediator', text: 'The final question — how do we make this peace last?' },
+        ],
+        choices: [
+          { text: '🏗️ "Rebuild the port together. Joint crews, shared profits. Make the economy of peace stronger than the economy of war."', correct: true, impact: 'Ambassador Chen smiles. Both leaders see it — a port that makes them rich is better than rubble. Hands are shaken.', icon: '🏗️' },
+          { text: '👮 "Station international peacekeepers at the port permanently."', correct: false, impact: 'Petrov shakes his head. "Foreign soldiers on my waters? Never."', icon: '👮' },
+          { text: '📝 "Sign a quick agreement now before anyone changes their mind."', correct: false, impact: 'Saleh hesitates. "Rushed agreements are broken agreements."', icon: '📝' },
+        ]
+      }
+    ]
+  },
+  // LEVEL 3 — The Capital
+  {
+    title: 'The Capital Peace Congress',
+    subtitle: 'All factions gather for a historic summit',
+    characters: {
+      factionA: { name: 'General Okafor', emoji: '🔴', faction: 'faction-a' },
+      factionB: { name: 'Minister Yuki', emoji: '🔵', faction: 'faction-b' },
+      mediator: { name: 'Secretary-General Diallo', emoji: '🟡', faction: 'mediator' },
+    },
+    rounds: [
+      {
+        dialogue: [
+          { speaker: 'mediator', text: 'The eyes of the world are upon us. Three million displaced. Enough is enough.' },
+          { speaker: 'factionA', text: 'My army controls the capital. Why should I negotiate from a position of strength?' },
+          { speaker: 'factionB', text: 'Strength? Your soldiers can\'t even feed themselves. The people want change.' },
+          { speaker: 'mediator', text: 'Aid Worker, you\'ve walked through every district. Tell them what you\'ve seen.' },
+        ],
+        choices: [
+          { text: '🕊️ "I\'ve set up safe corridors that both your soldiers and her supporters use. In the relief tents, nobody asks which side you\'re on."', correct: true, impact: 'The room falls quiet. Okafor stares at the table. His own troops have been using the aid corridors.', icon: '🕊️' },
+          { text: '⚔️ "General, your position isn\'t as strong as you think. The international community is preparing sanctions."', correct: false, impact: 'Okafor stands abruptly. "Threats only harden my resolve."', icon: '⚔️' },
+          { text: '🏃 "Perhaps we should start with smaller agreements and build up to the big issues."', correct: false, impact: 'Diallo shakes his head. "We don\'t have time for incremental steps. People are dying now."', icon: '🏃' },
+        ]
+      },
+      {
+        dialogue: [
+          { speaker: 'factionA', text: 'So what — we just pretend the last five years didn\'t happen? My people want justice.' },
+          { speaker: 'factionB', text: 'Justice? You shelled the university! You burned the archives!' },
+          { speaker: 'mediator', text: 'The cycle of blame must end somewhere. Aid Worker?' },
+        ],
+        choices: [
+          { text: '📻 "Set up a truth and reconciliation council — not run by foreigners, but by the teachers, doctors, and community leaders I\'ve worked with in every district."', correct: true, impact: 'Yuki leans forward. "Local people... not politicians?" She looks at Okafor. He nods slowly.', icon: '📻' },
+          { text: '📋 "The International Court can handle war crimes. Let\'s focus on the ceasefire."', correct: false, impact: 'Okafor slams his fist. "I\'m not sending my officers to some foreign court!"', icon: '📋' },
+          { text: '🚫 "Let\'s put the past behind us and focus only on the future."', correct: false, impact: 'Yuki\'s voice breaks. "The past IS why we\'re here. You can\'t just erase it."', icon: '🚫' },
+        ]
+      },
+      {
+        dialogue: [
+          { speaker: 'factionB', text: 'If we do this... if we really try... what does the future look like?' },
+          { speaker: 'factionA', text: 'I\'m tired, Minister. My soldiers are tired. But I need to know this isn\'t surrender.' },
+          { speaker: 'mediator', text: 'This is the moment that changes history. Aid Worker — how do we end this war?' },
+        ],
+        choices: [
+          { text: '✨ "Let the children speak. I\'ve met kids from both sides who dream of being doctors, teachers, engineers. They don\'t dream of war. Build the future they deserve."', correct: true, impact: 'Tears fall. General Okafor removes his military cap. Minister Yuki reaches across the table. Their hands meet. The war is over.', icon: '✨' },
+          { text: '💰 "A massive reconstruction fund — $10 billion in international aid, split equally."', correct: false, impact: 'Okafor waves dismissively. "Money didn\'t start this war and it won\'t end it."', icon: '💰' },
+          { text: '📝 "A 200-page peace treaty covering every detail. No ambiguity."', correct: false, impact: 'Diallo sighs. "Paper didn\'t stop the last war either. We need hearts to change, not just signatures."', icon: '📝' },
+        ]
+      }
+    ]
+  }
 ];
 
 // ============================================================
@@ -1043,10 +1202,7 @@ function performAction() {
     }
   }
 
-  // Negotiation marker
-  if (negotiationMarker && dist2D(playerMesh.position, negotiationMarker.position) < 3) {
-    startNegotiation(); return;
-  }
+  // Negotiation marker — now uses the Peace Talks button instead of walk-to-marker
   // Portal
   if (portalMesh && dist2D(playerMesh.position, portalMesh.position) < 3) {
     window.open('https://portal.pieter.com', '_blank');
@@ -1069,76 +1225,282 @@ function restoreNearbyBuildings(x, z, radius) {
 function checkNegotiationReady() {
   const lvl = levels[state.level];
   if (state.suppliesDelivered >= lvl.suppliesNeeded && state.civiliansRescued >= lvl.rescuesNeeded && !negotiationMarker && !state.peaceAchieved) {
-    const geo = new THREE.CylinderGeometry(0.5, 0.5, 3, 6);
-    const mat = new THREE.MeshStandardMaterial({ color: 0xffd93d, emissive: 0xffd93d, emissiveIntensity: 0.9 });
-    negotiationMarker = new THREE.Mesh(geo, mat);
-    negotiationMarker.position.set(rand(-5, 5), 1.5, rand(-5, 5));
+    // === DRAMATIC PEACE MONUMENT ===
+    negotiationMarker = new THREE.Group();
+    const px = rand(-5, 5), pz = rand(-5, 5);
+    negotiationMarker.position.set(px, 0, pz);
+
+    // Base platform — circular glowing disc
+    const baseMat = new THREE.MeshStandardMaterial({ color: 0xffd93d, emissive: 0xffd93d, emissiveIntensity: 0.4, transparent: true, opacity: 0.7 });
+    const baseGeo = new THREE.CylinderGeometry(3, 3, 0.15, 32);
+    const base = new THREE.Mesh(baseGeo, baseMat);
+    base.position.y = 0.1;
+    negotiationMarker.add(base);
+
+    // Inner ring
+    const ringGeo = new THREE.TorusGeometry(2, 0.08, 8, 32);
+    const ringMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffd93d, emissiveIntensity: 0.8 });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = Math.PI / 2; ring.position.y = 0.3;
+    negotiationMarker.add(ring);
+
+    // Central pillar — tall obelisk
+    const pillarGeo = new THREE.CylinderGeometry(0.15, 0.25, 5, 8);
+    const pillarMat = new THREE.MeshStandardMaterial({ color: 0xffd93d, emissive: 0xffd93d, emissiveIntensity: 0.6, metalness: 0.8, roughness: 0.2 });
+    const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+    pillar.position.y = 2.5;
+    negotiationMarker.add(pillar);
+
+    // Dove shape at top — diamond + wings
+    const doveBody = new THREE.Mesh(
+      new THREE.OctahedronGeometry(0.5, 0),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.5 })
+    );
+    doveBody.position.y = 5.3;
+    negotiationMarker.add(doveBody);
+
+    // Wing-like shapes
+    const wingGeo = new THREE.BoxGeometry(2.5, 0.06, 0.6);
+    const wingMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff8e1, emissiveIntensity: 0.4, transparent: true, opacity: 0.85 });
+    const wings = new THREE.Mesh(wingGeo, wingMat);
+    wings.position.y = 5.3;
+    negotiationMarker.add(wings);
+
+    // Orbiting particles (small spheres around the monument)
+    for (let i = 0; i < 8; i++) {
+      const particleMat = new THREE.MeshBasicMaterial({ color: 0xffd93d, transparent: true, opacity: 0.6 + Math.random() * 0.4 });
+      const particle = new THREE.Mesh(new THREE.SphereGeometry(0.1, 6, 6), particleMat);
+      particle.userData.orbitAngle = (i / 8) * Math.PI * 2;
+      particle.userData.orbitRadius = 1.5 + Math.random() * 1;
+      particle.userData.orbitSpeed = 0.8 + Math.random() * 0.5;
+      particle.userData.orbitY = 1 + Math.random() * 4;
+      particle.userData.isOrbitParticle = true;
+      negotiationMarker.add(particle);
+    }
+
+    // Multiple point lights for dramatic glow
+    const mainLight = new THREE.PointLight(0xffd93d, 2, 20);
+    mainLight.position.y = 5.5;
+    negotiationMarker.add(mainLight);
+    const baseLight = new THREE.PointLight(0xffa726, 1, 12);
+    baseLight.position.y = 0.5;
+    negotiationMarker.add(baseLight);
+
     scene.add(negotiationMarker);
-    const light = new THREE.PointLight(0xffd93d, 1.5, 15);
-    light.position.y = 3; negotiationMarker.add(light);
-    showMessage('🕊️ Peace talks ready! Find the golden marker!', 3500);
-    updateObjective('Find the golden marker for peace negotiations');
+
+    // Show the peace talks button in UI
+    document.getElementById('peace-talks-btn').classList.add('active');
+
+    showMessage('🕊️ The Peace Monument has appeared! Enter the Peace Talks!', 4000);
+    updateObjective('Click the Peace Talks button to begin negotiations');
+    AudioEngine.playCeasefire && AudioEngine.playCeasefire();
   }
 }
 
 function updateObjective(text) { document.getElementById('objective').textContent = text; }
 
 // ============================================================
-// NEGOTIATION SYSTEM
+// ROUND TABLE DISCUSSION SYSTEM
 // ============================================================
-let negRound = 0, negTimer = null;
+let negRound = 0, tensionLevel = 50; // 0 = full peace, 100 = full conflict
+
+// Peace-talks button click handler
+document.getElementById('peace-talks-btn').addEventListener('click', () => {
+  AudioEngine.playUIClick && AudioEngine.playUIClick();
+  startNegotiation();
+});
+
 function startNegotiation() {
-  state.phase = 'negotiation'; negRound = 0; state.negotiationCorrect = 0;
+  state.phase = 'negotiation';
+  negRound = 0;
+  state.negotiationCorrect = 0;
+  tensionLevel = 50;
+
+  const dialogue = peaceDialogues[Math.min(state.level, peaceDialogues.length - 1)];
+
+  // Set up the round table UI
+  document.getElementById('rt-title').textContent = '🕊️ ' + dialogue.title;
+  document.getElementById('rt-subtitle').textContent = dialogue.subtitle;
+  document.getElementById('discussion-log').innerHTML = '';
+  document.getElementById('player-choices').innerHTML = '';
+  updateTensionBar();
+
+  // Hide the peace-talks button, show the overlay
+  document.getElementById('peace-talks-btn').classList.remove('active');
   document.getElementById('negotiation').classList.add('active');
-  showNegRound();
+
+  // Start first round with a delay for dramatic effect
+  setTimeout(() => playRound(), 600);
 }
-function showNegRound() {
-  const data = negotiations[Math.min(state.level, negotiations.length-1)];
-  if (negRound >= data.length) { endNegotiation(); return; }
-  const d = data[negRound];
-  document.getElementById('neg-title').textContent = `Round ${negRound + 1}/3`;
-  document.getElementById('neg-prompt').textContent = d.prompt;
-  const el = document.getElementById('neg-choices'); el.innerHTML = '';
-  [...d.choices].sort(() => Math.random()-0.5).forEach(ch => {
-    const btn = document.createElement('div');
-    btn.className = 'neg-choice'; btn.textContent = ch.text;
-    btn.addEventListener('click', () => {
-      if (ch.correct) { state.negotiationCorrect++; btn.classList.add('correct'); AudioEngine.playNegSuccess(); }
-      else { btn.classList.add('wrong'); AudioEngine.playNegFail(); }
-      el.querySelectorAll('.neg-choice').forEach(c => c.style.pointerEvents = 'none');
-      clearInterval(negTimer);
-      setTimeout(() => { negRound++; showNegRound(); }, 1200);
-    });
-    el.appendChild(btn);
-  });
-  let timeLeft = 8;
-  document.getElementById('neg-timer').textContent = timeLeft;
-  clearInterval(negTimer);
-  negTimer = setInterval(() => {
-    timeLeft--;
-    document.getElementById('neg-timer').textContent = timeLeft;
-    if (timeLeft <= 0) { clearInterval(negTimer); negRound++; showNegRound(); }
-  }, 1000);
+
+function updateTensionBar() {
+  const fill = document.getElementById('tension-fill');
+  fill.style.width = tensionLevel + '%';
+  const valEl = document.getElementById('tension-val');
+  if (tensionLevel < 30) valEl.textContent = 'Near Peace';
+  else if (tensionLevel < 50) valEl.textContent = 'Easing';
+  else if (tensionLevel < 60) valEl.textContent = 'Neutral';
+  else if (tensionLevel < 80) valEl.textContent = 'Tense';
+  else valEl.textContent = 'Hostile';
 }
-function endNegotiation() {
-  clearInterval(negTimer);
-  document.getElementById('negotiation').classList.remove('active');
-  if (state.negotiationCorrect >= 2) {
-    state.peaceAchieved = true; state.phase = 'playing';
-    state.peaceCenter = { x: negotiationMarker.position.x, z: negotiationMarker.position.z };
-    scene.remove(negotiationMarker); negotiationMarker = null;
-    AudioEngine.playCeasefire();
-    showMessage('🕊️ CEASEFIRE ACHIEVED! ✨', 4000);
-    updateObjective('Peace spreads across the city...');
-    state.peaceProgress = 0;
-    setTimeout(() => showLevelComplete(), 7000);
-  } else {
-    state.phase = 'playing';
-    showMessage('Negotiations failed... Try again.', 2500);
-    if (negotiationMarker) scene.remove(negotiationMarker);
-    negotiationMarker = null;
-    setTimeout(() => checkNegotiationReady(), 3000);
+
+function addCharMessage(speaker, text, dialogue) {
+  const log = document.getElementById('discussion-log');
+  const chars = dialogue.characters;
+  const charData = chars[speaker];
+  const isPlayer = speaker === 'player';
+
+  const msg = document.createElement('div');
+  msg.className = 'char-msg' + (isPlayer ? ' right' : '');
+
+  const avatar = document.createElement('div');
+  avatar.className = 'char-avatar ' + (isPlayer ? 'player' : charData.faction);
+  avatar.textContent = isPlayer ? '🟢' : charData.emoji;
+
+  const bubble = document.createElement('div');
+  bubble.className = 'char-bubble';
+
+  const name = document.createElement('div');
+  name.className = 'char-name';
+  name.textContent = isPlayer ? state.username : charData.name;
+
+  const textEl = document.createElement('div');
+  textEl.className = 'char-text';
+  textEl.textContent = text;
+
+  bubble.appendChild(name);
+  bubble.appendChild(textEl);
+  msg.appendChild(avatar);
+  msg.appendChild(bubble);
+  log.appendChild(msg);
+
+  // Auto-scroll to bottom
+  log.scrollTop = log.scrollHeight;
+}
+
+function playRound() {
+  const dialogue = peaceDialogues[Math.min(state.level, peaceDialogues.length - 1)];
+  if (negRound >= dialogue.rounds.length) {
+    endNegotiation();
+    return;
   }
+
+  const round = dialogue.rounds[negRound];
+  document.getElementById('rt-subtitle').textContent = `Round ${negRound + 1} of ${dialogue.rounds.length}`;
+  document.getElementById('player-choices').innerHTML = '';
+
+  // Animate dialogue messages one by one
+  let delay = 0;
+  round.dialogue.forEach((line, i) => {
+    delay += 800 + Math.min(line.text.length * 8, 1200); // Dynamic delay based on text length
+    setTimeout(() => {
+      addCharMessage(line.speaker, line.text, dialogue);
+      AudioEngine.playUIClick && AudioEngine.playUIClick();
+    }, delay);
+  });
+
+  // Show player choices after all dialogue
+  delay += 1000;
+  setTimeout(() => showPlayerChoices(round, dialogue), delay);
+}
+
+function showPlayerChoices(round, dialogue) {
+  const container = document.getElementById('player-choices');
+  container.innerHTML = '';
+
+  [...round.choices].sort(() => Math.random() - 0.5).forEach(choice => {
+    const btn = document.createElement('div');
+    btn.className = 'player-choice';
+    btn.innerHTML = '<span class="choice-icon">' + choice.icon + '</span><span>' + choice.text.replace(choice.icon + ' ', '') + '</span>';
+
+    btn.addEventListener('click', () => {
+      // Disable all choices
+      container.querySelectorAll('.player-choice').forEach(c => {
+        c.style.pointerEvents = 'none';
+        c.style.opacity = '0.4';
+      });
+
+      if (choice.correct) {
+        state.negotiationCorrect++;
+        btn.classList.add('correct');
+        btn.style.opacity = '1';
+        tensionLevel = Math.max(0, tensionLevel - 20);
+        AudioEngine.playNegSuccess && AudioEngine.playNegSuccess();
+      } else {
+        btn.classList.add('wrong');
+        btn.style.opacity = '1';
+        tensionLevel = Math.min(100, tensionLevel + 15);
+        AudioEngine.playNegFail && AudioEngine.playNegFail();
+      }
+      updateTensionBar();
+
+      // Show player's choice as a message
+      setTimeout(() => {
+        addCharMessage('player', choice.text.replace(/^[^\s]+ /, ''), dialogue);
+      }, 300);
+
+      // Show impact/reaction
+      setTimeout(() => {
+        const impactMsg = document.createElement('div');
+        impactMsg.className = 'char-msg';
+        impactMsg.innerHTML = '<div class="char-bubble" style="background:rgba(255,217,61,0.1);border-color:rgba(255,217,61,0.2);max-width:90%;margin:0 auto;text-align:center;"><div class="char-text" style="color:#ffd93d;font-style:italic;">' + choice.impact + '</div></div>';
+        document.getElementById('discussion-log').appendChild(impactMsg);
+        document.getElementById('discussion-log').scrollTop = document.getElementById('discussion-log').scrollHeight;
+      }, 1200);
+
+      // Move to next round
+      setTimeout(() => {
+        negRound++;
+        container.innerHTML = '';
+        playRound();
+      }, 3000);
+    });
+
+    container.appendChild(btn);
+  });
+}
+
+function endNegotiation() {
+  document.getElementById('player-choices').innerHTML = '';
+
+  // Add final outcome message
+  const log = document.getElementById('discussion-log');
+  const outcomeMsg = document.createElement('div');
+  outcomeMsg.className = 'char-msg';
+
+  if (state.negotiationCorrect >= 2) {
+    outcomeMsg.innerHTML = '<div class="char-bubble" style="background:rgba(0,184,148,0.2);border-color:rgba(127,219,202,0.4);max-width:90%;margin:0 auto;text-align:center;padding:1.2rem;"><div class="char-text" style="color:#7fdbca;font-size:1.1rem;">🕊️ CEASEFIRE ACHIEVED 🕊️<br><br><span style="font-size:0.85rem;opacity:0.8;">The factions have agreed to peace. Hope returns to the city.</span></div></div>';
+  } else {
+    outcomeMsg.innerHTML = '<div class="char-bubble" style="background:rgba(255,107,107,0.15);border-color:rgba(255,107,107,0.3);max-width:90%;margin:0 auto;text-align:center;padding:1.2rem;"><div class="char-text" style="color:#ff6b6b;font-size:1.1rem;">❌ Negotiations Collapsed<br><br><span style="font-size:0.85rem;opacity:0.8;">The factions could not reach agreement. But there will be another chance...</span></div></div>';
+  }
+  log.appendChild(outcomeMsg);
+  log.scrollTop = log.scrollHeight;
+
+  // Delay before closing the overlay
+  setTimeout(() => {
+    document.getElementById('negotiation').classList.remove('active');
+
+    if (state.negotiationCorrect >= 2) {
+      state.peaceAchieved = true;
+      state.phase = 'playing';
+      if (negotiationMarker) {
+        state.peaceCenter = { x: negotiationMarker.position.x, z: negotiationMarker.position.z };
+        scene.remove(negotiationMarker);
+        negotiationMarker = null;
+      }
+      AudioEngine.playCeasefire && AudioEngine.playCeasefire();
+      showMessage('🕊️ CEASEFIRE ACHIEVED! ✨', 4000);
+      updateObjective('Peace spreads across the city...');
+      state.peaceProgress = 0;
+      setTimeout(() => showLevelComplete(), 7000);
+    } else {
+      state.phase = 'playing';
+      showMessage('Negotiations failed... The monument will return.', 2500);
+      if (negotiationMarker) { scene.remove(negotiationMarker); negotiationMarker = null; }
+      document.getElementById('peace-talks-btn').classList.remove('active');
+      setTimeout(() => checkNegotiationReady(), 3000);
+    }
+  }, 2500);
 }
 function showLevelComplete() {
   state.phase = 'levelComplete';
@@ -1146,7 +1508,7 @@ function showLevelComplete() {
   document.getElementById('peace-city-name').textContent = `${levels[state.level].name} Liberated`;
   const el = document.getElementById('stats-list'); el.innerHTML = '';
   [['Supplies Delivered', state.suppliesDelivered], ['Civilians Rescued', state.civiliansRescued],
-   ['Negotiations Won', `${state.negotiationCorrect}/3`], ['Total Score', state.score]].forEach(([l,v]) => {
+   ['Peace Talk Success', `${state.negotiationCorrect}/3`], ['Total Score', state.score]].forEach(([l,v]) => {
     const r = document.createElement('div'); r.className = 'stat-row';
     r.innerHTML = `<span>${l}</span><span class="stat-val">${v}</span>`;
     el.appendChild(r);
@@ -1298,10 +1660,27 @@ function update(dt) {
     }
   });
 
-  // Negotiation marker
+  // Peace Monument animation
   if (negotiationMarker) {
-    negotiationMarker.rotation.y += dt * 1.5;
-    negotiationMarker.position.y = 1.5 + Math.sin(state.gameClock * 2) * 0.5;
+    // Rotate the entire monument slowly
+    negotiationMarker.rotation.y += dt * 0.3;
+    // Animate orbiting particles
+    negotiationMarker.children.forEach(child => {
+      if (child.userData.isOrbitParticle) {
+        child.userData.orbitAngle += dt * child.userData.orbitSpeed;
+        child.position.x = Math.cos(child.userData.orbitAngle) * child.userData.orbitRadius;
+        child.position.z = Math.sin(child.userData.orbitAngle) * child.userData.orbitRadius;
+        child.position.y = child.userData.orbitY + Math.sin(state.gameClock * 2 + child.userData.orbitAngle) * 0.3;
+      }
+    });
+    // Dove bobbing at top
+    const dove = negotiationMarker.children[3]; // doveBody
+    if (dove) dove.position.y = 5.3 + Math.sin(state.gameClock * 1.5) * 0.2;
+    const wings = negotiationMarker.children[4]; // wings
+    if (wings) {
+      wings.position.y = 5.3 + Math.sin(state.gameClock * 1.5) * 0.2;
+      wings.scale.x = 1 + Math.sin(state.gameClock * 3) * 0.1; // wing flap
+    }
   }
   if (portalMesh) portalMesh.rotation.z += dt * 0.8;
 
@@ -1392,6 +1771,7 @@ function startLevel() {
   state.carrying = 0; state.followers = []; state.morale = MORALE_MAX;
   state.peaceAchieved = false; state.peaceProgress = 0; state.peaceCenter = null;
   state.negotiationCorrect = 0; state.gameClock = 0;
+  document.getElementById('peace-talks-btn').classList.remove('active');
   generateCity(); updateHUD(); updateSupplyIndicator(); updateMorale();
   const lvl = levels[state.level];
   updateObjective(`Deliver ${lvl.suppliesNeeded} supplies and rescue ${lvl.rescuesNeeded} civilians • Press E or tap ACT near objects`);
